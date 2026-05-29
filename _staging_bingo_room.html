@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block content %}
+{% set viewer_participant = bingo.participants|selectattr('discord_user_id', 'equalto', viewer.id)|list %}
+{% set p1_side = bingo.sides[0] if bingo.sides|length > 0 else None %}
+{% set p2_side = bingo.sides[1] if bingo.sides|length > 1 else None %}
+<section class="panel bingo-shell">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Hidden Bingo</p>
+      <h2>{{ bingo.room.room_code }}</h2>
+      <p class="muted">{{ bingo_category_labels.get(bingo.room.game_type, bingo.room.game_type|upper) }} &middot; {{ bingo.room.state|title }} &middot; {{ bingo.room.visibility|title }}</p>
+    </div>
+    <div class="history-admin-actions">
+      <a href="/bingo" class="chip">Rooms</a>
+      <a href="/bingo/room/{{ bingo.room.room_code }}/spectate" class="chip">Spectator view</a>
+      {% if bingo.can_manage_room and bingo.room.state == "active" %}
+      <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/finish">
+        <button type="submit" class="chip history-revoke-button">Finish room</button>
+      </form>
+      {% endif %}
+      {% if bingo.can_delete_room %}
+      <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/delete">
+        <button type="submit" class="chip history-revoke-button">Delete room</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="bingo-room-layout">
+  <div class="panel bingo-race-panel">
+    <div class="bingo-race-header">
+      <div>
+        <h3>{{ bingo.room.room_type|title }} race room</h3>
+        <p class="muted small">Rows, columns, and diagonals score once. Each side can still complete the same square independently.</p>
+      </div>
+      <div class="bingo-score-strip">
+        <span class="status-pill">{{ bingo.score.p1_points }} &middot; P1</span>
+        <span class="status-pill">{{ bingo.score.p2_points }} &middot; P2</span>
+      </div>
+    </div>
+    {% if not bingo.board_visible %}
+    <div class="bingo-countdown-card" {% if bingo.room.start_at_utc %}data-bingo-start="{{ bingo.room.start_at_utc }}"{% endif %}>
+      <div>
+        <p class="eyebrow">Board State</p>
+        <h3>{% if bingo.room.state == "countdown" %}Board locked until the countdown ends{% else %}Board hidden until racers are ready{% endif %}</h3>
+      </div>
+      <div class="bingo-countdown-display" data-bingo-countdown>
+        {% if bingo.room.start_at_utc %}
+        <time data-local-datetime="{{ bingo.room.start_at_utc }}" datetime="{{ bingo.room.start_at_utc }}">{{ bingo.room.start_at_utc }}</time>
+        {% else %}
+        Waiting for racers to join and ready up.
+        {% endif %}
+      </div>
+    </div>
+    <div class="bingo-board bingo-board-masked">
+      {% for index in range(25) %}
+      <div class="bingo-square bingo-square-placeholder">
+        <span>Hidden</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="bingo-board" data-bingo-board data-room-state="{{ bingo.room.state }}">
+      {% for square in bingo.board %}
+      <button
+        type="button"
+        class="bingo-square {% if square.p1_completed_at_utc %}is-complete-p1{% endif %} {% if square.p2_completed_at_utc %}is-complete-p2{% endif %}"
+        data-square-button
+        data-square-id="{{ square.square_id }}"
+        {% if not bingo.can_act_on_board %}disabled{% endif %}
+      >
+        {% if bingo.board_fill_mode == "single" %}
+          {% if square.p1_completed_at_utc and p1_side %}
+          <span class="bingo-square-fill" style="--bingo-fill: {{ p1_side.completion_color }};"></span>
+          {% endif %}
+          {% if square.p1_starred and p1_side %}
+          <span class="bingo-square-star bingo-square-star-p1" style="--bingo-star: {{ p1_side.star_color }};">&#9733;</span>
+          {% endif %}
+        {% else %}
+          {% if square.p1_completed_at_utc and p1_side %}
+          <span class="bingo-square-fill bingo-square-fill-p1" style="--bingo-fill: {{ p1_side.completion_color }};"></span>
+          {% endif %}
+          {% if square.p2_completed_at_utc and p2_side %}
+          <span class="bingo-square-fill bingo-square-fill-p2" style="--bingo-fill: {{ p2_side.completion_color }};"></span>
+          {% endif %}
+          {% if square.p1_starred and p1_side %}
+          <span class="bingo-square-star bingo-square-star-p1" style="--bingo-star: {{ p1_side.star_color }};">&#9733;</span>
+          {% endif %}
+          {% if square.p2_starred and p2_side %}
+          <span class="bingo-square-star bingo-square-star-p2" style="--bingo-star: {{ p2_side.star_color }};">&#9733;</span>
+          {% endif %}
+        {% endif %}
+        <span class="bingo-square-text">{{ square.goal_text }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% if bingo.room.state == "finished" %}
+    <div class="bingo-finished-cards">
+      {% for participant in bingo.sides %}
+      <article class="panel bingo-team-card">
+        <p class="eyebrow">{{ participant.slot|upper }}</p>
+        <h3>{{ participant.team_name or participant.display_name }}</h3>
+        <p class="muted">{{ participant.display_name }}</p>
+      </article>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="bingo-sidebar">
+    <section class="panel bingo-sidebar-card">
+      <div class="panel-header">
+        <h3>Status</h3>
+        <span class="panel-kicker">{{ bingo.room.state|title }}</span>
+      </div>
+      <dl class="bingo-meta-list">
+        <div><dt>Mode</dt><dd>{{ bingo.room.practice_mode|title }}</dd></div>
+        <div><dt>Algorithm</dt><dd>{{ bingo.room.generation_algorithm|upper }}</dd></div>
+        <div><dt>Format</dt><dd>{{ bingo.room.board_format }}</dd></div>
+        <div><dt>Starts</dt><dd>{% if bingo.room.start_at_utc %}<time data-local-datetime="{{ bingo.room.start_at_utc }}" datetime="{{ bingo.room.start_at_utc }}">{{ bingo.room.start_at_utc }}</time>{% else %}Auto after joined racers are ready{% endif %}</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel bingo-sidebar-card">
+      <div class="panel-header">
+        <h3>Participants</h3>
+        <span class="panel-kicker">{{ bingo.participants|length }} joined</span>
+      </div>
+      {% if bingo.participants %}
+      <div class="stack-list">
+        {% for participant in bingo.participants %}
+        <article class="list-card">
+          <div>
+            <h4>{{ participant.display_name }}</h4>
+            {% if participant.team_name %}
+            <p class="muted">{{ participant.team_name }}</p>
+            {% endif %}
+            {% if participant.result_status == "done" %}
+            <p class="muted small">Done{% if participant.result_at_utc %} at <time data-local-datetime="{{ participant.result_at_utc }}" datetime="{{ participant.result_at_utc }}">{{ participant.result_at_utc }}</time>{% endif %}</p>
+            {% elif participant.result_status == "forfeit" %}
+            <p class="muted small">Forfeit{% if participant.result_at_utc %} at <time data-local-datetime="{{ participant.result_at_utc }}" datetime="{{ participant.result_at_utc }}">{{ participant.result_at_utc }}</time>{% endif %}</p>
+            {% endif %}
+          </div>
+          <div class="meta-right">
+            <div class="stack-list">
+              <span class="status-pill {% if participant.ready %}status-pill-success{% endif %}">
+                {% if participant.result_status == "done" %}
+                Done
+                {% elif participant.result_status == "forfeit" %}
+                Forfeit
+                {% elif participant.ready %}
+                Ready
+                {% else %}
+                Joined
+                {% endif %}
+              </span>
+            </div>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">No racers have joined this room yet.</p>
+      {% endif %}
+    </section>
+
+    {% if bingo.can_edit_team_name %}
+    <section class="panel bingo-sidebar-card">
+      <div class="panel-header">
+        <h3>Team Name</h3>
+        <span class="panel-kicker">Pre-race</span>
+      </div>
+      <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/team-name" class="stack-list">
+        <label>
+          <span class="muted small">Current team name</span>
+          <input type="text" name="team_name" maxlength="64" value="{{ bingo.viewer_team_name }}" placeholder="Generate or enter a team name">
+        </label>
+        <div class="bingo-timer-actions bingo-team-name-actions">
+          <button type="submit" class="chip history-admin-link">Save name</button>
+          <button type="submit" class="chip" name="action" value="generate">Generate name</button>
+        </div>
+      </form>
+    </section>
+    {% endif %}
+
+    <section class="panel bingo-sidebar-card">
+      <div class="panel-header">
+        <h3>Scored Lines</h3>
+        <span class="panel-kicker">{{ bingo.score.awarded_lines|length }}</span>
+      </div>
+      {% if bingo.score.awarded_lines %}
+      <div class="stack-list">
+        {% for line in bingo.score.awarded_lines %}
+        <article class="list-card">
+          <div>
+            <h4>{{ line.display_label }}</h4>
+            <p class="muted">Awarded to {{ line.awarded_to_slot|upper }}</p>
+          </div>
+          <div class="meta-right">
+            <time class="muted small" data-local-datetime="{{ line.awarded_at_utc }}" datetime="{{ line.awarded_at_utc }}">{{ line.awarded_at_utc }}</time>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">No lines have been awarded yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="bingo-feed-column">
+    <section
+      class="panel bingo-timer-card"
+      {% if bingo.room.start_at_utc %}data-bingo-timer-start="{{ bingo.room.start_at_utc }}"{% endif %}
+      {% if bingo.room.finished_at_utc %}data-bingo-timer-finish="{{ bingo.room.finished_at_utc }}"{% endif %}
+    >
+      <div class="bingo-timer-display" data-bingo-race-timer>
+        {% if bingo.room.state == "finished" %}
+        Final
+        {% elif bingo.room.state == "active" %}
+        0:00:00
+        {% elif bingo.room.state == "countdown" %}
+        Countdown
+        {% else %}
+        Waiting
+        {% endif %}
+      </div>
+      <p class="muted bingo-timer-label">
+        {% if bingo.room.state == "finished" %}
+        Finished
+        {% elif bingo.room.state == "active" %}
+        Race in progress
+        {% elif bingo.room.state == "countdown" %}
+        Countdown running
+        {% else %}
+        Waiting for racers
+        {% endif %}
+      </p>
+      <div class="bingo-timer-actions">
+        {% if bingo.can_join_room %}
+        <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/join">
+          <button type="submit" class="chip history-admin-link">Join</button>
+        </form>
+        {% endif %}
+        {% if bingo.can_leave_room %}
+        <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/leave">
+          <button type="submit" class="chip">Leave</button>
+        </form>
+        {% endif %}
+        {% if bingo.can_ready_room %}
+        <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/ready">
+          <input type="hidden" name="ready" value="{% if viewer_participant and viewer_participant[0].ready %}0{% else %}1{% endif %}">
+          <button type="submit" class="chip history-admin-link">{% if viewer_participant and viewer_participant[0].ready %}Unready{% else %}Ready{% endif %}</button>
+        </form>
+        {% endif %}
+        {% if bingo.can_report_done %}
+        <div class="bingo-result-actions">
+          <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/result">
+            <input type="hidden" name="result" value="done">
+            <button type="submit" class="chip history-admin-link">Done</button>
+          </form>
+          <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/result">
+            <input type="hidden" name="result" value="forfeit">
+            <button type="submit" class="chip history-revoke-button">Forfeit</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="panel bingo-chat-card">
+      <div class="panel-header">
+        <h3>Room Feed</h3>
+        <span class="panel-kicker">{{ bingo.room.state|title }}</span>
+      </div>
+      <div class="bingo-activity-list">
+        {% for item in bingo.room_feed %}
+        <article
+          class="bingo-log-entry {% if item.kind == 'chat' %}bingo-log-entry-chat{% endif %} {% if item.actor_color %}bingo-log-entry-accented{% endif %}"
+          {% if item.actor_color %}style="--feed-accent: {{ item.actor_color }};"{% endif %}
+        >
+          <div class="bingo-log-entry-meta">
+            <strong>{{ item.actor_name or (item.actor_slot|upper if item.actor_slot else 'System') }}</strong>
+            {% if item.occurred_at_utc %}
+            <time class="muted small" data-local-datetime="{{ item.occurred_at_utc }}" datetime="{{ item.occurred_at_utc }}">{{ item.occurred_at_utc }}</time>
+            {% endif %}
+          </div>
+          {% if item.kind == "chat" %}
+          <p>{{ item.body }}</p>
+          {% else %}
+          <span>{{ item.summary }}</span>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+      {% if bingo.can_send_chat %}
+      <form method="post" action="/bingo/room/{{ bingo.room.room_code }}/chat" class="bingo-chat-form">
+        <input type="text" name="message" maxlength="500" placeholder="Send a room message..." autocomplete="off">
+        <button type="submit" class="chip history-admin-link">Send</button>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+</section>
+
+<form method="post" action="/bingo/room/{{ bingo.room.room_code }}/action" id="bingo-action-form" hidden>
+  <input type="hidden" name="square_id" value="">
+  <input type="hidden" name="action_type" value="">
+</form>
+<div
+  id="bingo-room-live-state"
+  data-room-code="{{ bingo.room.room_code }}"
+  data-room-version="{{ bingo.room.version }}"
+  hidden
+></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const actionForm = document.getElementById("bingo-action-form");
+    const squareIdInput = actionForm?.querySelector('input[name="square_id"]');
+    const actionTypeInput = actionForm?.querySelector('input[name="action_type"]');
+
+    document.querySelectorAll("[data-square-button]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        if (!actionForm || !squareIdInput || !actionTypeInput) {
+          return;
+        }
+        const squareId = button.getAttribute("data-square-id");
+        if (!squareId) {
+          return;
+        }
+        squareIdInput.value = squareId;
+        actionTypeInput.value = event.shiftKey ? "goal.star.add" : "goal.complete";
+        actionForm.submit();
+      });
+
+      button.addEventListener("contextmenu", (event) => {
+        if (!actionForm || !squareIdInput || !actionTypeInput) {
+          return;
+        }
+        event.preventDefault();
+        const squareId = button.getAttribute("data-square-id");
+        if (!squareId) {
+          return;
+        }
+        squareIdInput.value = squareId;
+        actionTypeInput.value = event.shiftKey ? "goal.star.remove" : "goal.clear";
+        actionForm.submit();
+      });
+    });
+
+    const countdown = document.querySelector("[data-bingo-start]");
+    if (countdown) {
+      const target = new Date(countdown.getAttribute("data-bingo-start"));
+      const countdownLabel = countdown.querySelector("[data-bingo-countdown]");
+      const updateCountdown = () => {
+        const remainingMs = target.getTime() - Date.now();
+        if (remainingMs <= 0) {
+          window.location.reload();
+          return;
+        }
+        const totalSeconds = Math.floor(remainingMs / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        if (countdownLabel) {
+          countdownLabel.textContent = `${minutes}:${String(seconds).padStart(2, "0")} until reveal`;
+        }
+      };
+      updateCountdown();
+      window.setInterval(updateCountdown, 1000);
+    }
+
+    const timerCard = document.querySelector("[data-bingo-race-timer]");
+    const timerHost = timerCard?.closest(".bingo-timer-card");
+    const timerStartValue = timerHost?.getAttribute("data-bingo-timer-start");
+    const timerFinishValue = timerHost?.getAttribute("data-bingo-timer-finish");
+    if (timerCard && timerStartValue) {
+      const startAt = new Date(timerStartValue);
+      const finishAt = timerFinishValue ? new Date(timerFinishValue) : null;
+      const formatDuration = (totalSeconds) => {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+      };
+      const updateTimer = () => {
+        const endAt = finishAt || new Date();
+        const elapsed = Math.max(0, Math.floor((endAt.getTime() - startAt.getTime()) / 1000));
+        timerCard.textContent = formatDuration(elapsed);
+      };
+      updateTimer();
+      if (!finishAt) {
+        window.setInterval(updateTimer, 1000);
+      }
+    }
+
+    const liveState = document.getElementById("bingo-room-live-state");
+    if (liveState) {
+      const roomCode = liveState.getAttribute("data-room-code");
+      let currentVersion = Number(liveState.getAttribute("data-room-version") || "0");
+      const refreshIfChanged = async () => {
+        if (!roomCode) {
+          return;
+        }
+        try {
+          const response = await fetch(`/api/bingo/rooms/${roomCode}/snapshot`, {
+            credentials: "same-origin",
+            headers: { Accept: "application/json" },
+          });
+          if (!response.ok) {
+            return;
+          }
+          const snapshot = await response.json();
+          const nextVersion = Number(snapshot?.room?.version || 0);
+          if (nextVersion > currentVersion) {
+            window.location.reload();
+            return;
+          }
+          currentVersion = nextVersion;
+        } catch (error) {
+          console.debug("bingo room refresh skipped", error);
+        }
+      };
+      window.setInterval(refreshIfChanged, 2000);
+    }
+  });
+</script>
+{% endblock %}

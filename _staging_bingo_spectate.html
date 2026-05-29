@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="panel bingo-shell">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Hidden Bingo</p>
+      <h2>{{ bingo.room.room_code }} Spectator View</h2>
+      <p class="muted">{{ bingo_category_labels.get(bingo.room.game_type, bingo.room.game_type|upper) }} &middot; {{ bingo.room.state|title }}</p>
+    </div>
+    <a href="/bingo/room/{{ bingo.room.room_code }}" class="chip">Open room</a>
+  </div>
+</section>
+
+<section
+  class="bingo-spectator-layout"
+  data-bingo-room-code="{{ bingo.room.room_code }}"
+  data-room-version="{{ bingo.room.version }}"
+  {% if bingo.room.state == "countdown" and bingo.room.start_at_utc %}data-bingo-start="{{ bingo.room.start_at_utc }}"{% endif %}
+>
+  <div class="panel bingo-race-panel">
+    <div class="bingo-race-header">
+      <div>
+        <h3>Spectator boards</h3>
+        <p class="muted small">Read-only view of every board in the room.</p>
+      </div>
+    </div>
+
+    {% if bingo.boards %}
+    <div class="stack-list">
+      {% for board in bingo.boards %}
+      {% set board_p1 = board.participants[0] if board.participants|length > 0 else None %}
+      {% set board_p2 = board.participants[1] if board.participants|length > 1 else None %}
+      <section class="panel bingo-sidebar-card">
+        <div class="bingo-race-header">
+          <div>
+            <h3>{{ board.team_name }}</h3>
+            <p class="muted small">
+              {{ board.board_fill_mode|title }} board
+              {% if board.participants %}
+              &middot;
+              {% for participant in board.participants %}
+              {{ participant.display_name }}{% if not loop.last %}, {% endif %}
+              {% endfor %}
+              {% endif %}
+            </p>
+          </div>
+          <div class="bingo-score-strip">
+            {% if board.board_fill_mode == "team" %}
+            <span class="status-pill">{{ board.score.p1_points }} &middot; P1</span>
+            <span class="status-pill">{{ board.score.p2_points }} &middot; P2</span>
+            {% else %}
+            <span class="status-pill">{{ board.score.p1_points }} points</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if not board.board_visible %}
+        <div class="bingo-countdown-card">
+          <div>
+            <p class="eyebrow">Board State</p>
+            <h3>Board hidden until the countdown ends</h3>
+          </div>
+          <div class="bingo-countdown-display" data-bingo-countdown>
+            {% if bingo.room.start_at_utc %}
+            <time data-local-datetime="{{ bingo.room.start_at_utc }}" datetime="{{ bingo.room.start_at_utc }}">{{ bingo.room.start_at_utc }}</time>
+            {% else %}
+            Waiting for racers to join and ready up.
+            {% endif %}
+          </div>
+        </div>
+        <div class="bingo-board bingo-board-masked">
+          {% for index in range(25) %}
+          <div class="bingo-square bingo-square-placeholder">
+            <span>Hidden</span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="bingo-board bingo-board-static">
+          {% for square in board.board %}
+          <article class="bingo-square {% if square.p1_completed_at_utc %}is-complete-p1{% endif %} {% if square.p2_completed_at_utc %}is-complete-p2{% endif %}">
+            {% if board.board_fill_mode == "single" %}
+              {% if square.p1_completed_at_utc and board_p1 %}
+              <span class="bingo-square-fill" style="--bingo-fill: {{ board_p1.completion_color }};"></span>
+              {% endif %}
+              {% if square.p1_starred and board_p1 %}
+              <span class="bingo-square-star bingo-square-star-p1" style="--bingo-star: {{ board_p1.star_color }};">&#9733;</span>
+              {% endif %}
+            {% else %}
+              {% if square.p1_completed_at_utc and board_p1 %}
+              <span class="bingo-square-fill bingo-square-fill-p1" style="--bingo-fill: {{ board_p1.completion_color }};"></span>
+              {% endif %}
+              {% if square.p2_completed_at_utc and board_p2 %}
+              <span class="bingo-square-fill bingo-square-fill-p2" style="--bingo-fill: {{ board_p2.completion_color }};"></span>
+              {% endif %}
+              {% if square.p1_starred and board_p1 %}
+              <span class="bingo-square-star bingo-square-star-p1" style="--bingo-star: {{ board_p1.star_color }};">&#9733;</span>
+              {% endif %}
+              {% if square.p2_starred and board_p2 %}
+              <span class="bingo-square-star bingo-square-star-p2" style="--bingo-star: {{ board_p2.star_color }};">&#9733;</span>
+              {% endif %}
+            {% endif %}
+            <span class="bingo-square-text">{{ square.goal_text }}</span>
+          </article>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+      {% endfor %}
+    </div>
+    {% else %}
+    <section class="panel bingo-sidebar-card">
+      <p class="muted">No boards have been created yet.</p>
+    </section>
+    {% endif %}
+  </div>
+
+  <div class="bingo-sidebar">
+    <section class="panel bingo-sidebar-card">
+      <div class="panel-header">
+        <h3>Entrants</h3>
+        <span class="panel-kicker">{{ bingo.entrants|length }}</span>
+      </div>
+      {% if bingo.entrants %}
+      <div class="stack-list">
+        {% for entrant in bingo.entrants %}
+        <article class="list-card">
+          <div>
+            <h4>{{ entrant.display_name }}</h4>
+            <p class="muted">{{ entrant.team_name }}</p>
+          </div>
+          <div class="meta-right">
+            <span class="status-pill {% if entrant.ready %}status-pill-success{% endif %}">
+              {% if entrant.result_status == "done" %}
+              Done
+              {% elif entrant.result_status == "forfeit" %}
+              Forfeit
+              {% elif entrant.ready %}
+              Ready
+              {% else %}
+              Joined
+              {% endif %}
+            </span>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="muted">No racers have joined this room yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <div class="bingo-feed-column">
+    <section class="panel bingo-chat-card">
+      <div class="panel-header">
+        <h3>Activity</h3>
+        <span class="panel-kicker">{{ bingo.room.state|title }}</span>
+      </div>
+      <div class="bingo-activity-list">
+        {% for item in bingo.activity_feed|reverse %}
+        <article class="bingo-log-entry {% if item.actor_color %}bingo-log-entry-accented{% endif %}" {% if item.actor_color %}style="--feed-accent: {{ item.actor_color }};"{% endif %}>
+          <strong>{% if item.actor_slot %}{{ item.actor_slot|upper }}{% else %}{{ item.actor_name }}{% endif %}</strong>
+          <span>{{ item.summary }}</span>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const root = document.querySelector("[data-bingo-room-code]");
+    if (!root) {
+      return;
+    }
+
+    const renderCountdownText = (targetValue) => {
+      if (!targetValue) {
+        return "Waiting for racers to join and ready up.";
+      }
+      const target = new Date(targetValue);
+      const remainingMs = target.getTime() - Date.now();
+      if (remainingMs <= 0) {
+        return "Reveal pending...";
+      }
+      const totalSeconds = Math.floor(remainingMs / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      return `${minutes}:${String(seconds).padStart(2, "0")} until reveal`;
+    };
+
+    const start = root.getAttribute("data-bingo-start");
+    if (start) {
+      const countdownLabels = root.querySelectorAll("[data-bingo-countdown]");
+      const updateCountdown = () => {
+        countdownLabels.forEach((label) => {
+          label.textContent = renderCountdownText(start);
+        });
+      };
+      updateCountdown();
+      window.setInterval(updateCountdown, 1000);
+    }
+
+    const roomCode = root.getAttribute("data-bingo-room-code");
+    let currentVersion = Number(root.getAttribute("data-room-version") || "0");
+    const refreshIfChanged = async () => {
+      if (!roomCode) {
+        return;
+      }
+      try {
+        const response = await fetch(`/bingo/room/${roomCode}/spectate/state`, {
+          credentials: "same-origin",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) {
+          return;
+        }
+        const snapshot = await response.json();
+        const nextVersion = Number(snapshot?.room?.version || 0);
+        if (nextVersion > currentVersion) {
+          window.location.reload();
+          return;
+        }
+        currentVersion = nextVersion;
+      } catch (error) {
+        console.debug("bingo spectator refresh skipped", error);
+      }
+    };
+
+    window.setInterval(refreshIfChanged, 2000);
+  });
+</script>
+{% endblock %}

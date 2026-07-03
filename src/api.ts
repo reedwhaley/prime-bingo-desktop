@@ -48,6 +48,8 @@ export async function fetchRooms(config: Omit<ConnectionConfig, "roomCode">): Pr
 export async function createRoom(
   config: Omit<ConnectionConfig, "roomCode">,
   payload: {
+    variant?: string;
+    board_size?: number;
     practice_mode: string;
     game_type: string;
     algorithm: string;
@@ -79,14 +81,11 @@ async function postRoomAction(
 }
 
 export async function createDesktopAuthRequest(baseUrl: string, deviceName: string): Promise<DesktopAuthRequestCreateResponse> {
+  const body = new URLSearchParams();
+  body.set("device_name", deviceName);
   const response = await fetch(`${baseUrl}/api/bingo/desktop/auth/requests`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      device_name: deviceName
-    })
+    body
   });
   if (!response.ok) {
     throw new Error(`Desktop sign-in request failed with HTTP ${response.status}`);
@@ -145,6 +144,10 @@ export async function sendChatMessage(config: ConnectionConfig, message: string)
 
 export function joinRoom(config: ConnectionConfig, slot: "p1" | "p2") {
   return postRoomAction(config, "join", { slot });
+}
+
+export function joinRoomTarget(config: ConnectionConfig, payload: { board_id: string; slot: "p1" | "p2" }) {
+  return postRoomAction(config, "join", payload);
 }
 
 export function joinRoomGeneric(config: ConnectionConfig) {

@@ -9,6 +9,7 @@ import {
   fetchRooms,
   fetchSnapshot,
   joinRoomGeneric,
+  joinRoomTarget,
   leaveRoom,
   reportRoomResult,
   saveViewerSettings,
@@ -33,7 +34,7 @@ import type {
 type ConnectionState = "idle" | "mock" | "connecting" | "connected" | "offline" | "error";
 type SnapshotEvent = { type: "room.snapshot"; version: number; payload: RoomSnapshot };
 
-const PRODUCTION_BASE_URL = "https://mpr.servegame.com";
+const PRODUCTION_BASE_URL = "https://mprandomizer.com";
 const deviceName = "Prime Bingo Desktop";
 const USER_COLOR_STORAGE_KEY = "prime-bingo:user-color";
 const DEFAULT_USER_COLOR = "#4BCEA2";
@@ -46,6 +47,11 @@ const PRACTICE_MODE_OPTIONS = [
   { value: "singles", label: "Singles" },
   { value: "team", label: "Team" }
 ] as const;
+const VARIANT_OPTIONS = [
+  { value: "classic", label: "Classic Bingo" },
+  { value: "central_dynamo", label: "Central Dynamo Bingo" }
+] as const;
+const CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS = [7, 9, 11, 13] as const;
 const ALGORITHM_OPTIONS = [
   { value: "random", label: "Random" },
   { value: "srlv5", label: "SRLv5" },
@@ -171,6 +177,23 @@ const escapeHtml = (value: string) =>
   }[char] as string));
 
 const currentSnapshot = () => state.snapshot;
+const currentVariant = () => currentSnapshot()?.room.variant || "classic";
+const isCentralDynamo = () => currentVariant() === "central_dynamo";
+const currentBoardSize = () => {
+  const snapshot = currentSnapshot();
+  if (!snapshot) {
+    return 5;
+  }
+  const numeric = Number(snapshot.room.board_size || snapshot.rules.board_size || 0);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return numeric;
+  }
+  const formatMatch = /^(\d+)x\1$/i.exec(String(snapshot.room.board_format || ""));
+  if (formatMatch) {
+    return Number(formatMatch[1]);
+  }
+  return snapshot.room.variant === "central_dynamo" ? 7 : 5;
+};
 const currentParticipants = () => currentSnapshot()?.participants ?? [];
 const currentJoinedEntrants = () => {
   const snapshot = currentSnapshot();
@@ -822,6 +845,8 @@ async function submitCreateRoom(form: HTMLFormElement) {
         sessionToken: state.sessionToken
       },
       {
+        variant: String(formData.get("variant") || "classic"),
+        board_size: Number(formData.get("board_size") || "7"),
         practice_mode: String(formData.get("practice_mode") || "singles"),
         game_type: String(formData.get("game_type") || "mpr"),
         algorithm: String(formData.get("algorithm") || "random"),
@@ -881,9 +906,21 @@ function renderCreateRoomForm() {
   return `
     <form id="create-room-form" class="create-room-form">
       <label>
+        <span>Variant</span>
+        <select name="variant" data-create-variant>
+          ${VARIANT_OPTIONS.map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
         <span>Practice mode</span>
-        <select name="practice_mode">
+        <select name="practice_mode" data-create-practice-mode>
           ${PRACTICE_MODE_OPTIONS.map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join("")}
+        </select>
+      </label>
+      <label data-central-board-size hidden>
+        <span>Board size</span>
+        <select name="board_size">
+          ${CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === 7 ? "selected" : ""}>${size}x${size}</option>`).join("")}
         </select>
       </label>
       <label>
@@ -905,6 +942,7 @@ function renderCreateRoomForm() {
           <option value="public">Public</option>
         </select>
       </label>
+      <div class="empty-copy" data-central-helper hidden>Central Dynamo is fixed 2v2 team mode with opposite-corner starts on a shared board.</div>
       <div class="create-room-actions">
         <button type="submit" class="action-button action-button-primary">Create room</button>
         <button type="button" class="action-button action-button-ghost" id="cancel-create-room">Cancel</button>
@@ -1021,6 +1059,9 @@ function renderBoardStage() {
     `;
   }
 
+  const boardSize = currentBoardSize();
+  const central = snapshot.room.variant === "central_dynamo";
+
   if (!snapshot.board_visible) {
     return `
       <section class="stage-card board-stage board-stage-locked">
@@ -1036,15 +1077,15 @@ function renderBoardStage() {
           <div class="countdown-copy">Board reveal</div>
           <div class="countdown-value" data-bingo-countdown>${snapshot.room.start_at_utc ? escapeHtml(formatLocalDateTime(snapshot.room.start_at_utc)) : "Waiting for racers"}</div>
         </div>
-        <div class="masked-grid">
-          ${Array.from({ length: 25 }, (_, index) => `<article class="masked-cell">Hidden ${index + 1}</article>`).join("")}
+        <div class="masked-grid board-grid-size-${boardSize}" style="--board-columns:${boardSize};">
+          ${Array.from({ length: boardSize * boardSize }, (_, index) => `<article class="masked-cell">Hidden ${index + 1}</article>`).join("")}
         </div>
       </section>
     `;
   }
 
   const [p1, p2] = snapshot.participants;
-  const fillMode = snapshot.board_fill_mode || (snapshot.room.practice_mode === "team" ? "team" : "single");
+  const fillMode = central ? "team" : snapshot.board_fill_mode || (snapshot.room.practice_mode === "team" ? "team" : "single");
   const p1Fill = p1 ? participantCompletionColor(p1) : "#f76007";
   const p2Fill = p2 ? participantCompletionColor(p2) : "#3bec94";
   const p1Star = p1 ? participantStarColor(p1) : "#ffd166";
@@ -1061,23 +1102,28 @@ function renderBoardStage() {
           <button type="button" class="action-button action-button-ghost board-back-button" id="back-to-browser-button">Back</button>
           <div class="board-score">
             <article>
-              <span>${fillMode === "team" ? "P1" : "Board"}</span>
-              <strong>${snapshot.score.p1_points}</strong>
+              <span>${central ? "P1 Claims" : (fillMode === "team" ? "P1" : "Board")}</span>
+              <strong>${central ? snapshot.connection_status?.claimed_by_slot?.p1 ?? 0 : snapshot.score.p1_points}</strong>
             </article>
             ${fillMode === "team" ? `
             <article>
-              <span>P2</span>
-              <strong>${snapshot.score.p2_points}</strong>
+              <span>${central ? "P2 Claims" : "P2"}</span>
+              <strong>${central ? snapshot.connection_status?.claimed_by_slot?.p2 ?? 0 : snapshot.score.p2_points}</strong>
             </article>
             ` : ""}
           </div>
         </div>
       </div>
-      <div class="board-grid">
+      <div class="board-grid board-grid-size-${boardSize}" style="--board-columns:${boardSize};">
         ${snapshot.board
           .map((square) => `
-            <button class="board-square" data-square-id="${square.square_id}" type="button" ${snapshot.permissions.can_act_on_board && !isMockMode() ? "" : "disabled"}>
-              ${fillMode === "single"
+            <button class="board-square ${square.hidden ? "board-square-hidden" : "board-square-revealed"}" data-square-id="${square.square_id}" type="button" ${snapshot.permissions.can_act_on_board && !isMockMode() ? "" : "disabled"} ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}>
+              ${central
+                ? `${square.claimed_by_slot === "p1" ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
+                   ${square.claimed_by_slot === "p2" ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
+                   ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
+                   ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`
+                : fillMode === "single"
                 ? `${square.p1_completed_at_utc ? `<span class="square-fill" style="--fill:${p1Fill};"></span>` : ""}
                    ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}`
                 : `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-p1" style="--fill:${p1Fill};"></span>` : ""}
@@ -1144,19 +1190,17 @@ function renderRoomActions() {
   if (!snapshot || isMockMode()) {
     return "";
   }
+  const central = snapshot.room.variant === "central_dynamo";
   const viewerEntrant = currentViewerEntrant();
   const canJoinRoom = Boolean(snapshot.permissions.can_join_room);
   const canLeaveRoom = Boolean(snapshot.permissions.can_leave_room);
   const canReadyRoom = Boolean(snapshot.permissions.can_ready_room);
   const canManageRoom = Boolean(snapshot.permissions.can_manage_room);
   const canEditTeamName = Boolean(snapshot.permissions.can_edit_team_name);
-  const canReportResult =
-    snapshot.room.state === "active" &&
-    Boolean(snapshot.viewer_joined) &&
-    viewerEntrant?.result_status !== "done" &&
-    viewerEntrant?.result_status !== "forfeit";
+  const canReportDone = Boolean(snapshot.permissions.can_report_done);
+  const canReportForfeit = Boolean(snapshot.permissions.can_report_forfeit);
 
-  if (!canJoinRoom && !canLeaveRoom && !canReadyRoom && !canManageRoom && !canReportResult && !canEditTeamName) {
+  if (!canJoinRoom && !canLeaveRoom && !canReadyRoom && !canManageRoom && !canReportDone && !canReportForfeit && !canEditTeamName && !(central && snapshot.join_targets?.length)) {
     return "";
   }
 
@@ -1173,6 +1217,24 @@ function renderRoomActions() {
             : ""
         }
         ${
+          central && !snapshot.viewer_joined
+            ? (snapshot.join_targets || [])
+                .map(
+                  (target) => `
+                    <button
+                      type="button"
+                      class="action-button ${target.occupied ? "action-button-ghost" : "action-button-primary"}"
+                      data-room-action="join-target"
+                      data-board-id="${escapeHtml(target.board_id)}"
+                      data-slot="${escapeHtml(target.slot)}"
+                      ${target.occupied ? "disabled" : ""}
+                    >${escapeHtml(target.label)}${target.occupied_by ? ` - ${escapeHtml(target.occupied_by)}` : ""}</button>
+                  `
+                )
+                .join("")
+            : ""
+        }
+        ${
           canLeaveRoom
             ? `<button type="button" class="action-button action-button-ghost" data-room-action="leave">Leave room</button>`
             : ""
@@ -1183,11 +1245,15 @@ function renderRoomActions() {
             : ""
         }
         ${
-          canReportResult
+          canReportDone
             ? `
               <button type="button" class="action-button action-button-primary" data-room-action="result" data-room-result="done">Done</button>
-              <button type="button" class="action-button action-button-secondary" data-room-action="result" data-room-result="forfeit">Forfeit</button>
             `
+            : ""
+        }
+        ${
+          canReportForfeit
+            ? `<button type="button" class="action-button action-button-secondary" data-room-action="result" data-room-result="forfeit">Forfeit</button>`
             : ""
         }
         ${
@@ -1234,6 +1300,20 @@ function renderScoredLines() {
   if (!snapshot) {
     return "";
   }
+  if (snapshot.room.variant === "central_dynamo") {
+    const connection = snapshot.connection_status;
+    return `
+      <section class="tool-card">
+        <div class="panel-heading-inline">
+          <span class="section-kicker">Connection</span>
+          <span class="room-meta">${connection?.connected ? "Connected" : "Searching"}</span>
+        </div>
+        <p class="empty-copy">Revealed: ${connection?.revealed_count ?? 0}</p>
+        <p class="empty-copy">P1 claims: ${connection?.claimed_by_slot?.p1 ?? 0}</p>
+        <p class="empty-copy">P2 claims: ${connection?.claimed_by_slot?.p2 ?? 0}</p>
+      </section>
+    `;
+  }
   return `
     <section class="tool-card">
       <div class="panel-heading-inline">
@@ -1266,6 +1346,18 @@ function renderScoredLines() {
 function renderControls() {
   if (!hasLoadedRoom()) {
     return "";
+  }
+  if (isCentralDynamo()) {
+    return `
+      <section class="tool-card">
+        <span class="section-kicker">Controls</span>
+        <div class="control-list">
+          <span><strong>Click</strong> claim</span>
+          <span><strong>Shift + click</strong> star</span>
+          <span><strong>Shift + right click</strong> unstar</span>
+        </div>
+      </section>
+    `;
   }
   return `
     <section class="tool-card">
@@ -1523,7 +1615,10 @@ function render() {
       if (!squareId) {
         return;
       }
-      const actionType = event.shiftKey ? "goal.star.remove" : "goal.clear";
+      const actionType = event.shiftKey ? "goal.star.remove" : isCentralDynamo() ? null : "goal.clear";
+      if (!actionType) {
+        return;
+      }
       void submitSquareAction(squareId, actionType);
     });
   });
@@ -1569,6 +1664,28 @@ function render() {
     }
     void submitCreateRoom(form);
   });
+
+  const createVariantSelect = app.querySelector<HTMLSelectElement>("[data-create-variant]");
+  const createPracticeMode = app.querySelector<HTMLSelectElement>("[data-create-practice-mode]");
+  const createBoardSize = app.querySelector<HTMLElement>("[data-central-board-size]");
+  const createHelper = app.querySelector<HTMLElement>("[data-central-helper]");
+  const syncCreateVariantUi = () => {
+    const isCentral = createVariantSelect?.value === "central_dynamo";
+    if (createPracticeMode) {
+      createPracticeMode.closest("label")?.toggleAttribute("hidden", Boolean(isCentral));
+      if (isCentral) {
+        createPracticeMode.value = "team";
+      }
+    }
+    if (createBoardSize) {
+      createBoardSize.toggleAttribute("hidden", !isCentral);
+    }
+    if (createHelper) {
+      createHelper.toggleAttribute("hidden", !isCentral);
+    }
+  };
+  createVariantSelect?.addEventListener("change", syncCreateVariantUi);
+  syncCreateVariantUi();
 
   app.querySelector<HTMLInputElement>("#user-color-input")?.addEventListener("input", (event) => {
     const input = event.currentTarget;
@@ -1646,6 +1763,27 @@ function render() {
               sessionToken: state.sessionToken
             }),
           "Joined the room."
+        );
+        return;
+      }
+
+      if (action === "join-target") {
+        const boardId = button.dataset.boardId;
+        const slot = button.dataset.slot;
+        if (!boardId || (slot !== "p1" && slot !== "p2")) {
+          return;
+        }
+        void submitRoomMutation(
+          () =>
+            joinRoomTarget(
+              {
+                baseUrl: state.baseUrl,
+                roomCode: state.roomCode,
+                sessionToken: state.sessionToken
+              },
+              { board_id: boardId, slot }
+            ),
+          `Joined ${slot.toUpperCase()}.`
         );
         return;
       }

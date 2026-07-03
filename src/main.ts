@@ -108,8 +108,11 @@ const state = {
   visualTimerHandle: 0 as number | 0,
   roomPollHandle: 0 as number | 0,
   socket: null as WebSocket | null,
+  liveSocketConnected: false,
   syncMessage: "Start Discord sign-in to link the desktop app.",
   pendingActions: 0,
+  pendingSquareIds: new Set<string>(),
+  pendingChat: false,
   createFormOpen: false,
   settingsOpen: false,
   userColorHex: loadStoredUserColor(),
@@ -120,7 +123,9 @@ const state = {
   chatSelectionStart: 0,
   chatSelectionEnd: 0,
   roomFeedScrollTop: 0,
-  roomFeedStickBottom: true
+  roomFeedStickBottom: true,
+  forceRoomFeedScrollBottom: false,
+  skipTransientCaptureOnce: false
 };
 
 const formatTime = (value: string | null | undefined) => {
@@ -320,6 +325,23 @@ function clearRoomPolling() {
   }
 }
 
+function startRoomPolling() {
+  clearRoomPolling();
+  if (!state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
+    return;
+  }
+  state.roomPollHandle = window.setInterval(() => {
+    const variant = currentSnapshot()?.room.variant || "classic";
+    if (state.liveSocketConnected && variant !== "central_dynamo") {
+      return;
+    }
+    if (state.pendingSquareIds.size || state.pendingChat) {
+      return;
+    }
+    void refreshCurrentRoomSnapshot("Room state refreshed.");
+  }, 2000);
+}
+
 function clearDesktopAuthState() {
   cancelAuthPolling();
   state.authRequestId = "";
@@ -331,6 +353,7 @@ function clearDesktopAuthState() {
 function closeSocket() {
   state.socket?.close();
   state.socket = null;
+  state.liveSocketConnected = false;
 }
 
 async function openExternalUrl(url: string) {
@@ -425,34 +448,41 @@ function updateSquareByEvent(event: LiveEvent) {
 
 function updateScoreByEvent(event: LiveEvent) {
   const snapshot = currentSnapshot();
-  if (!snapshot || event.type !== "line.awarded") {
+  if (!snapshot || (event.type !== "line.awarded" && event.type !== "line.revoked")) {
     return;
   }
-  const slot = String(event.payload.awarded_to_slot ?? "") as PlayerSlot;
-  if (slot === "p1") {
-    snapshot.score.p1_points += 1;
-  } else if (slot === "p2") {
-    snapshot.score.p2_points += 1;
-  } else {
-    return;
-  }
-  snapshot.score.awarded_lines = [
-    ...snapshot.score.awarded_lines,
-    {
-      line_type: String(event.payload.line_type ?? "row") as "row" | "column" | "diagonal",
-      line_index: Number(event.payload.line_index ?? 0),
+  const lineType = String(event.payload.line_type ?? "row") as "row" | "column" | "diagonal";
+  const lineIndex = Number(event.payload.line_index ?? 0);
+  const lineKey = `${lineType}:${lineIndex}`;
+  const remainingLines = snapshot.score.awarded_lines.filter(
+    (line) => `${line.line_type}:${line.line_index}` !== lineKey
+  );
+
+  if (event.type === "line.awarded") {
+    const slot = String(event.payload.awarded_to_slot ?? "") as PlayerSlot;
+    if (slot !== "p1" && slot !== "p2") {
+      return;
+    }
+    remainingLines.push({
+      line_type: lineType,
+      line_index: lineIndex,
       display_label:
-        String(event.payload.line_type ?? "") === "column"
-          ? `Column ${Number(event.payload.line_index ?? 0) + 1}`
-          : String(event.payload.line_type ?? "") === "diagonal"
-            ? Number(event.payload.line_index ?? 0) === 0
+        lineType === "column"
+          ? `Column ${lineIndex + 1}`
+          : lineType === "diagonal"
+            ? lineIndex === 0
               ? "Diagonal 1"
               : "Diagonal 2"
-            : `Row ${Number(event.payload.line_index ?? 0) + 1}`,
+            : `Row ${lineIndex + 1}`,
       awarded_to_slot: slot,
       awarded_at_utc: String(event.payload.awarded_at_utc ?? new Date().toISOString())
-    }
-  ];
+    });
+  } else if (event.type !== "line.revoked") {
+    return;
+  }
+  snapshot.score.awarded_lines = remainingLines;
+  snapshot.score.p1_points = remainingLines.filter((line) => line.awarded_to_slot === "p1").length;
+  snapshot.score.p2_points = remainingLines.filter((line) => line.awarded_to_slot === "p2").length;
 }
 
 function isSnapshotEvent(event: LiveEvent | SnapshotEvent): event is SnapshotEvent {
@@ -541,6 +571,12 @@ async function refreshCurrentRoomSnapshot(message: string) {
 }
 
 async function handleLiveEvent(event: LiveEvent | SnapshotEvent) {
+  if (!isSnapshotEvent(event) && event.type.startsWith("square.")) {
+    const squareId = String(event.payload.square_id ?? "");
+    if (squareId && state.pendingSquareIds.has(squareId)) {
+      return;
+    }
+  }
   applyLiveEvent(event);
   if (isSnapshotEvent(event) || !state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
     return;
@@ -623,10 +659,7 @@ async function connectToLiveRoom(roomCode = state.roomCode) {
     });
     applySnapshot(snapshot, "Room snapshot loaded from the website API.");
     state.connectionState = "connected";
-    clearRoomPolling();
-    state.roomPollHandle = window.setInterval(() => {
-      void refreshCurrentRoomSnapshot("Room state refreshed.");
-    }, 2000);
+    startRoomPolling();
     closeSocket();
     state.socket = connectLive(
       {
@@ -637,7 +670,11 @@ async function connectToLiveRoom(roomCode = state.roomCode) {
       snapshot.room.version,
       {
         onOpen: () => {
+          state.liveSocketConnected = true;
           state.connectionState = "connected";
+          if ((currentSnapshot()?.room.variant || "classic") !== "central_dynamo") {
+            clearRoomPolling();
+          }
           state.syncMessage = `Live feed connected for ${roomCode}.`;
           render();
         },
@@ -645,11 +682,15 @@ async function connectToLiveRoom(roomCode = state.roomCode) {
           void handleLiveEvent(event);
         },
         onClose: () => {
+          state.liveSocketConnected = false;
+          startRoomPolling();
           state.connectionState = "offline";
           state.syncMessage = "Live room feed disconnected. Using snapshot refresh.";
           render();
         },
         onError: () => {
+          state.liveSocketConnected = false;
+          startRoomPolling();
           state.connectionState = "error";
           state.syncMessage = "Live room feed hit an error. Using snapshot refresh.";
           render();
@@ -778,9 +819,11 @@ async function submitSquareAction(squareId: string, actionType: "goal.complete" 
   if (!state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
     return;
   }
+  if (state.pendingSquareIds.has(squareId)) {
+    return;
+  }
+  state.pendingSquareIds.add(squareId);
   state.pendingActions += 1;
-  state.syncMessage = `Sending ${actionType}...`;
-  render();
   try {
     const response = await sendBoardAction(
       {
@@ -797,19 +840,24 @@ async function submitSquareAction(squareId: string, actionType: "goal.complete" 
     applySnapshot(response.snapshot, response.duplicate ? "Duplicate action ignored cleanly." : `${actionType} applied.`);
   } catch (error) {
     state.syncMessage = error instanceof Error ? error.message : "Action failed.";
-    render();
+    try {
+      await refreshCurrentRoomSnapshot("Room state refreshed after action failure.");
+    } catch {
+      render();
+    }
   } finally {
+    state.pendingSquareIds.delete(squareId);
     state.pendingActions = Math.max(0, state.pendingActions - 1);
-    render();
   }
 }
 
 async function submitChatMessage(form: HTMLFormElement) {
   const input = form.querySelector<HTMLInputElement>('input[name="chat_message"]');
   const message = input?.value.trim() ?? "";
-  if (!message || !state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
+  if (!message || !state.sessionToken.trim() || !state.roomCode.trim() || isMockMode() || state.pendingChat) {
     return;
   }
+  state.pendingChat = true;
   try {
     const response = await sendChatMessage(
       {
@@ -823,10 +871,17 @@ async function submitChatMessage(form: HTMLFormElement) {
       throw new Error(response.message || response.error_code || "Chat was rejected.");
     }
     state.chatDraft = "";
+    state.chatInputFocused = true;
+    state.chatSelectionStart = 0;
+    state.chatSelectionEnd = 0;
+    state.forceRoomFeedScrollBottom = true;
+    state.skipTransientCaptureOnce = true;
     applySnapshot(response.snapshot, "Chat message sent.");
   } catch (error) {
     state.syncMessage = error instanceof Error ? error.message : "Failed to send chat.";
     render();
+  } finally {
+    state.pendingChat = false;
   }
 }
 
@@ -1061,10 +1116,11 @@ function renderBoardStage() {
 
   const boardSize = currentBoardSize();
   const central = snapshot.room.variant === "central_dynamo";
+  const stageClass = central ? " board-stage-central-dynamo" : "";
 
   if (!snapshot.board_visible) {
     return `
-      <section class="stage-card board-stage board-stage-locked">
+      <section class="stage-card board-stage board-stage-locked${stageClass}">
         <div class="board-head board-head-browser">
           <div>
             <span class="section-kicker">Board State</span>
@@ -1091,7 +1147,7 @@ function renderBoardStage() {
   const p1Star = p1 ? participantStarColor(p1) : "#ffd166";
   const p2Star = p2 ? participantStarColor(p2) : "#7fdbff";
   return `
-    <section class="stage-card board-stage">
+    <section class="stage-card board-stage${stageClass}">
       <div class="board-head">
         <div>
           <span class="section-kicker">Active Room</span>
@@ -1444,7 +1500,7 @@ function renderRoomFeed() {
         ? `
           <form id="chat-form" class="chat-form">
             <input name="chat_message" placeholder="Send a room message..." value="${escapeHtml(state.chatDraft)}" />
-            <button type="submit" class="action-button action-button-primary">Send</button>
+            <button type="submit" class="action-button action-button-primary" ${state.pendingChat ? "disabled" : ""}>Send</button>
           </form>
         `
         : ""}
@@ -1474,12 +1530,13 @@ function captureTransientUiState() {
 function restoreTransientUiState() {
   const feedList = app.querySelector<HTMLElement>(".room-feed-list");
   if (feedList) {
-    if (state.roomFeedStickBottom) {
+    if (state.forceRoomFeedScrollBottom || state.roomFeedStickBottom) {
       feedList.scrollTop = feedList.scrollHeight;
     } else {
       feedList.scrollTop = state.roomFeedScrollTop;
     }
   }
+  state.forceRoomFeedScrollBottom = false;
 
   const chatInput = app.querySelector<HTMLInputElement>('input[name="chat_message"]');
   if (chatInput) {
@@ -1509,9 +1566,10 @@ function renderAuthenticatedBrowserView() {
 }
 
 function renderRoomView() {
+  const centralClass = isCentralDynamo() ? " is-room-mode-central-dynamo" : "";
   return `
     <div class="desktop-shell">
-      <main class="desktop-layout is-room-mode">
+      <main class="desktop-layout is-room-mode${centralClass}">
         <section class="layout-column stage-column">
           ${renderBoardStage()}
         </section>
@@ -1590,7 +1648,9 @@ function bindVisualTimers() {
 
 function render() {
   clearVisualTimer();
-  captureTransientUiState();
+  if (!state.skipTransientCaptureOnce) {
+    captureTransientUiState();
+  }
   if (hasLoadedRoom()) {
     app.innerHTML = renderRoomView();
   } else if (isBrowserMode()) {
@@ -1598,12 +1658,13 @@ function render() {
   } else {
     app.innerHTML = renderAuthView();
   }
+  state.skipTransientCaptureOnce = false;
   restoreTransientUiState();
 
   app.querySelectorAll<HTMLButtonElement>(".board-square").forEach((button) => {
     button.addEventListener("click", (event) => {
       const squareId = button.dataset.squareId;
-      if (!squareId) {
+      if (!squareId || state.pendingSquareIds.has(squareId)) {
         return;
       }
       const actionType = event.shiftKey ? "goal.star.add" : "goal.complete";
@@ -1612,7 +1673,7 @@ function render() {
     button.addEventListener("contextmenu", (event) => {
       event.preventDefault();
       const squareId = button.dataset.squareId;
-      if (!squareId) {
+      if (!squareId || state.pendingSquareIds.has(squareId)) {
         return;
       }
       const actionType = event.shiftKey ? "goal.star.remove" : isCentralDynamo() ? null : "goal.clear";

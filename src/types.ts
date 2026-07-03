@@ -1,4 +1,5 @@
 export type PlayerSlot = "p1" | "p2";
+export type BingoVariant = "classic" | "central_dynamo";
 
 export type RoomState = "draft" | "waiting" | "countdown" | "active" | "paused" | "finished" | "archived";
 
@@ -22,6 +23,7 @@ export type Entrant = {
   display_name: string;
   team_name: string;
   slot: string;
+  board_id?: string;
   joined_at_utc: string | null;
   ready: boolean;
   result_status: string;
@@ -34,6 +36,14 @@ export type BoardSquare = {
   goal_text: string;
   row_index: number;
   column_index: number;
+  difficulty?: string | null;
+  difficulty_tier?: string | null;
+  difficulty_color?: string | null;
+  revealed?: boolean;
+  hidden?: boolean;
+  is_start?: boolean;
+  claimed_by_slot?: PlayerSlot | null;
+  claimed_at_utc?: string | null;
   p1_completed_at_utc: string | null;
   p2_completed_at_utc: string | null;
   p1_starred: boolean;
@@ -83,6 +93,8 @@ export type RoomSnapshot = {
     room_id: string;
     room_code: string;
     room_type: string;
+    variant?: BingoVariant;
+    board_size?: number;
     practice_mode?: string;
     state: RoomState;
     visibility: string;
@@ -102,15 +114,42 @@ export type RoomSnapshot = {
     board_hidden_until_active: boolean;
     auto_countdown_after_both_ready?: boolean;
     countdown_seconds?: number;
+    board_size?: number;
+    win_condition?: string;
+    fog_of_war?: boolean;
+    allow_player_unclaim?: boolean;
+    allow_staff_unclaim?: boolean;
   };
   viewer_slot: PlayerSlot | null;
   viewer_joined?: boolean;
   viewer_team_name?: string;
+  viewer_board_id?: string;
   board_fill_mode?: "single" | "team";
   participants: Participant[];
   entrants?: Entrant[];
   board_visible: boolean;
   board: BoardSquare[];
+  base_board?: BoardSquare[];
+  join_targets?: {
+    board_id: string;
+    slot: PlayerSlot;
+    team_name: string;
+    label: string;
+    occupied: boolean;
+    occupied_by?: string;
+  }[];
+  connection_status?: {
+    connected: boolean;
+    revealed_count: number;
+    claimed_total: number;
+    claimed_by_slot: Record<PlayerSlot, number>;
+  } | null;
+  winner?: {
+    board_id: string;
+    team_name: string;
+    reason: string;
+    occurred_at_utc: string;
+  } | null;
   score: {
     p1_points: number;
     p2_points: number;
@@ -127,6 +166,8 @@ export type RoomSnapshot = {
     can_leave_room?: boolean;
     can_ready_room?: boolean;
     can_edit_team_name?: boolean;
+    can_report_done?: boolean;
+    can_report_forfeit?: boolean;
   };
 };
 

@@ -53,12 +53,14 @@ jobs:
         run: npm ci
 
       # Current default: ad-hoc codesign on macOS via bundle.macOS.signingIdentity = "-".
-      # This avoids completely unsigned .app/.dmg artifacts, but it is not a substitute
-      # for a real Developer ID certificate plus notarization. When those secrets are ready,
-      # add an import/notarization flow using:
+      # Keep Apple certificate/notarization secrets out of this step for now so CI does not
+      # attempt keychain import or notarization before the project is ready for Developer ID
+      # signing. Later, if full macOS distribution is needed, add a separate cert import +
+      # notarization flow using:
       #   APPLE_CERTIFICATE
       #   APPLE_CERTIFICATE_PASSWORD
       #   KEYCHAIN_PASSWORD
+      #   APPLE_SIGNING_IDENTITY
       #   APPLE_ID
       #   APPLE_PASSWORD
       #   APPLE_TEAM_ID
@@ -66,12 +68,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           args: ${{ matrix.args }}
 

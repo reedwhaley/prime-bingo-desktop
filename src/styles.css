@@ -75,11 +75,11 @@ button {
 }
 
 .desktop-layout.is-room-mode {
-  grid-template-columns: minmax(0, 2.05fr) minmax(240px, 0.58fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(0, 2.35fr) minmax(220px, 0.42fr) minmax(360px, 0.82fr);
 }
 
 .desktop-layout.is-room-mode.is-room-mode-central-dynamo {
-  grid-template-columns: minmax(0, 2.2fr) minmax(220px, 0.5fr) minmax(360px, 0.88fr);
+  grid-template-columns: minmax(0, 2.5fr) minmax(210px, 0.38fr) minmax(360px, 0.8fr);
 }
 
 .layout-column {
@@ -105,6 +105,22 @@ button {
 .timer-card {
   display: grid;
   gap: 16px;
+}
+
+.stage-column {
+  align-content: start;
+}
+
+.stage-column .tool-card {
+  max-width: 100%;
+}
+
+.side-column {
+  align-content: start;
+}
+
+.feed-column {
+  align-content: start;
 }
 
 .auth-card h1,
@@ -793,7 +809,11 @@ button {
 
 @media (max-width: 1520px) {
   .desktop-layout.is-room-mode {
-    grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.9fr);
+    grid-template-columns: minmax(0, 1.9fr) minmax(300px, 0.78fr);
+  }
+
+  .desktop-layout.is-room-mode .side-column {
+    grid-column: 1 / -1;
   }
 
   .desktop-layout.is-room-mode .feed-column {
@@ -802,7 +822,11 @@ button {
   }
 
   .desktop-layout.is-room-mode.is-room-mode-central-dynamo {
-    grid-template-columns: minmax(0, 1.85fr) minmax(300px, 0.88fr);
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 0.76fr);
+  }
+
+  .desktop-layout.is-room-mode.is-room-mode-central-dynamo .side-column {
+    grid-column: 1 / -1;
   }
 
   .desktop-layout.is-room-mode.is-room-mode-central-dynamo .feed-column {

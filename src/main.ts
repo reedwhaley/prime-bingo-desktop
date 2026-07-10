@@ -1651,16 +1651,16 @@ function renderRoomView() {
       <main class="desktop-layout is-room-mode${centralClass}">
         <section class="layout-column stage-column">
           ${renderBoardStage()}
+          ${renderControls()}
         </section>
         <aside class="layout-column side-column">
-          ${renderParticipants()}
+          ${renderRoomActions()}
         </aside>
         <aside class="layout-column feed-column">
-          ${renderRoomActions()}
           ${renderTimerCard()}
+          ${renderParticipants()}
           ${renderRoomFeed()}
           ${renderScoredLines()}
-          ${renderControls()}
         </aside>
       </main>
     </div>

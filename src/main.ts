@@ -1653,11 +1653,9 @@ function renderRoomView() {
           ${renderBoardStage()}
           ${renderControls()}
         </section>
-        <aside class="layout-column side-column">
-          ${renderRoomActions()}
-        </aside>
         <aside class="layout-column feed-column">
           ${renderTimerCard()}
+          ${renderRoomActions()}
           ${renderParticipants()}
           ${renderRoomFeed()}
           ${renderScoredLines()}

@@ -22,6 +22,7 @@ import {
 import { mockRooms, mockSnapshot } from "./mockData";
 import type {
   ActivityEntry,
+  BoardSquare,
   ChatMessage,
   DesktopAuthRequestStatusResponse,
   Entrant,
@@ -1101,6 +1102,100 @@ function renderRoomBrowser() {
   `;
 }
 
+function renderMaskedBoardMatrix(boardSize: number) {
+  const cells: string[] = [];
+  for (let row = 0; row < boardSize; row += 1) {
+    cells.push(`<span class="board-axis-label board-axis-label-y" aria-hidden="true">${row + 1}</span>`);
+    for (let column = 0; column < boardSize; column += 1) {
+      cells.push(`<article class="masked-cell">Hidden</article>`);
+    }
+  }
+
+  return `
+    <div class="board-matrix board-matrix-size-${boardSize}" style="--board-columns:${boardSize};">
+      <span class="board-axis-corner" aria-hidden="true"></span>
+      ${Array.from({ length: boardSize }, (_, index) => `<span class="board-axis-label board-axis-label-x" aria-hidden="true">${index + 1}</span>`).join("")}
+      ${cells.join("")}
+    </div>
+  `;
+}
+
+function renderBoardSquare(
+  snapshot: RoomSnapshot,
+  square: BoardSquare,
+  options: {
+    central: boolean;
+    fillMode: "single" | "team";
+    p1Fill: string;
+    p2Fill: string;
+    p1Star: string;
+    p2Star: string;
+  }
+) {
+  const { central, fillMode, p1Fill, p2Fill, p1Star, p2Star } = options;
+  const overlays = central
+    ? `${square.claimed_by_slot === "p1" ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
+       ${square.claimed_by_slot === "p2" ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
+       ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
+       ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`
+    : fillMode === "single"
+      ? `${square.p1_completed_at_utc ? `<span class="square-fill" style="--fill:${p1Fill};"></span>` : ""}
+         ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}`
+      : `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-p1" style="--fill:${p1Fill};"></span>` : ""}
+         ${square.p2_completed_at_utc ? `<span class="square-fill square-fill-p2" style="--fill:${p2Fill};"></span>` : ""}
+         ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
+         ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`;
+
+  return `
+    <button
+      class="board-square ${square.hidden ? "board-square-hidden" : "board-square-revealed"}"
+      data-square-id="${escapeHtml(square.square_id)}"
+      type="button"
+      ${snapshot.permissions.can_act_on_board && !isMockMode() ? "" : "disabled"}
+      ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}
+    >
+      ${overlays}
+      <span class="square-text">${escapeHtml(square.hidden ? "Hidden" : square.goal_text)}</span>
+    </button>
+  `;
+}
+
+function renderActiveBoardMatrix(
+  snapshot: RoomSnapshot,
+  boardSize: number,
+  options: {
+    central: boolean;
+    fillMode: "single" | "team";
+    p1Fill: string;
+    p2Fill: string;
+    p1Star: string;
+    p2Star: string;
+  }
+) {
+  const boardByPosition = new Map(snapshot.board.map((square) => [`${square.row_index}:${square.column_index}`, square]));
+  const cells: string[] = [];
+
+  for (let row = 0; row < boardSize; row += 1) {
+    cells.push(`<span class="board-axis-label board-axis-label-y" aria-hidden="true">${row + 1}</span>`);
+    for (let column = 0; column < boardSize; column += 1) {
+      const square = boardByPosition.get(`${row}:${column}`);
+      if (square) {
+        cells.push(renderBoardSquare(snapshot, square, options));
+      } else {
+        cells.push(`<article class="masked-cell">Hidden</article>`);
+      }
+    }
+  }
+
+  return `
+    <div class="board-matrix board-matrix-size-${boardSize}" style="--board-columns:${boardSize};">
+      <span class="board-axis-corner" aria-hidden="true"></span>
+      ${Array.from({ length: boardSize }, (_, index) => `<span class="board-axis-label board-axis-label-x" aria-hidden="true">${index + 1}</span>`).join("")}
+      ${cells.join("")}
+    </div>
+  `;
+}
+
 function renderBoardStage() {
   const snapshot = currentSnapshot();
   if (!snapshot) {
@@ -1133,9 +1228,7 @@ function renderBoardStage() {
           <div class="countdown-copy">Board reveal</div>
           <div class="countdown-value" data-bingo-countdown>${snapshot.room.start_at_utc ? escapeHtml(formatLocalDateTime(snapshot.room.start_at_utc)) : "Waiting for racers"}</div>
         </div>
-        <div class="masked-grid board-grid-size-${boardSize}" style="--board-columns:${boardSize};">
-          ${Array.from({ length: boardSize * boardSize }, (_, index) => `<article class="masked-cell">Hidden ${index + 1}</article>`).join("")}
-        </div>
+        ${renderMaskedBoardMatrix(boardSize)}
       </section>
     `;
   }
@@ -1170,28 +1263,14 @@ function renderBoardStage() {
           </div>
         </div>
       </div>
-      <div class="board-grid board-grid-size-${boardSize}" style="--board-columns:${boardSize};">
-        ${snapshot.board
-          .map((square) => `
-            <button class="board-square ${square.hidden ? "board-square-hidden" : "board-square-revealed"}" data-square-id="${square.square_id}" type="button" ${snapshot.permissions.can_act_on_board && !isMockMode() ? "" : "disabled"} ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}>
-              ${central
-                ? `${square.claimed_by_slot === "p1" ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
-                   ${square.claimed_by_slot === "p2" ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
-                   ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
-                   ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`
-                : fillMode === "single"
-                ? `${square.p1_completed_at_utc ? `<span class="square-fill" style="--fill:${p1Fill};"></span>` : ""}
-                   ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}`
-                : `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-p1" style="--fill:${p1Fill};"></span>` : ""}
-                   ${square.p2_completed_at_utc ? `<span class="square-fill square-fill-p2" style="--fill:${p2Fill};"></span>` : ""}
-                   ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
-                   ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`}
-              <span class="square-index">${square.row_index + 1}.${square.column_index + 1}</span>
-              <span class="square-text">${escapeHtml(square.goal_text)}</span>
-            </button>
-          `)
-          .join("")}
-      </div>
+      ${renderActiveBoardMatrix(snapshot, boardSize, {
+        central,
+        fillMode,
+        p1Fill,
+        p2Fill,
+        p1Star,
+        p2Star
+      })}
     </section>
   `;
 }
@@ -1574,14 +1653,14 @@ function renderRoomView() {
           ${renderBoardStage()}
         </section>
         <aside class="layout-column side-column">
-          ${renderRoomActions()}
           ${renderParticipants()}
-          ${renderScoredLines()}
-          ${renderControls()}
         </aside>
         <aside class="layout-column feed-column">
+          ${renderRoomActions()}
           ${renderTimerCard()}
           ${renderRoomFeed()}
+          ${renderScoredLines()}
+          ${renderControls()}
         </aside>
       </main>
     </div>

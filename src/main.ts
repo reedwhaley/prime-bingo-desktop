@@ -38,6 +38,7 @@ type SnapshotEvent = { type: "room.snapshot"; version: number; payload: RoomSnap
 const PRODUCTION_BASE_URL = "https://mprandomizer.com";
 const deviceName = "Prime Bingo Desktop";
 const USER_COLOR_STORAGE_KEY = "prime-bingo:user-color";
+const DESKTOP_SESSION_STORAGE_KEY = "prime-bingo:desktop-session";
 const DEFAULT_USER_COLOR = "#4BCEA2";
 const GAME_OPTIONS = [
   { value: "mpr", label: "Metroid Prime Randomizer" },
@@ -96,23 +97,69 @@ function loadStoredUserColor() {
   return normalizeHexColor(stored ?? "") ?? DEFAULT_USER_COLOR;
 }
 
+type PersistedDesktopSession = {
+  sessionToken: string;
+  authViewerId: string;
+  authViewerName: string;
+  roomCode: string;
+};
+
+function loadPersistedDesktopSession(): PersistedDesktopSession | null {
+  if (typeof window === "undefined" || !("localStorage" in window)) {
+    return null;
+  }
+  const stored = window.localStorage.getItem(DESKTOP_SESSION_STORAGE_KEY);
+  if (!stored) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(stored) as Partial<PersistedDesktopSession>;
+    const sessionToken = String(parsed.sessionToken ?? "").trim();
+    if (!sessionToken || sessionToken === "mock-session") {
+      return null;
+    }
+    return {
+      sessionToken,
+      authViewerId: String(parsed.authViewerId ?? "").trim(),
+      authViewerName: String(parsed.authViewerName ?? "").trim(),
+      roomCode: String(parsed.roomCode ?? "").trim().toUpperCase()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function clearPersistedDesktopSession() {
+  if (typeof window !== "undefined" && "localStorage" in window) {
+    window.localStorage.removeItem(DESKTOP_SESSION_STORAGE_KEY);
+  }
+}
+
+function storePersistedDesktopSession(session: PersistedDesktopSession) {
+  if (typeof window !== "undefined" && "localStorage" in window) {
+    window.localStorage.setItem(DESKTOP_SESSION_STORAGE_KEY, JSON.stringify(session));
+  }
+}
+
+const persistedDesktopSession = loadPersistedDesktopSession();
+
 const state = {
   snapshot: null as RoomSnapshot | null,
   rooms: [] as RoomSnapshot[],
-  connectionState: "idle" as ConnectionState,
+  connectionState: (persistedDesktopSession ? "connecting" : "idle") as ConnectionState,
   baseUrl: PRODUCTION_BASE_URL,
-  roomCode: "",
-  sessionToken: "",
+  roomCode: persistedDesktopSession?.roomCode ?? "",
+  sessionToken: persistedDesktopSession?.sessionToken ?? "",
   authRequestId: "",
   authExpiresAtUtc: "",
-  authViewerId: "",
-  authViewerName: "",
+  authViewerId: persistedDesktopSession?.authViewerId ?? "",
+  authViewerName: persistedDesktopSession?.authViewerName ?? "",
   authPollHandle: 0 as number | 0,
   visualTimerHandle: 0 as number | 0,
   roomPollHandle: 0 as number | 0,
   socket: null as WebSocket | null,
   liveSocketConnected: false,
-  syncMessage: "Start Discord sign-in to link the desktop app.",
+  syncMessage: persistedDesktopSession ? "Restoring desktop session..." : "Start Discord sign-in to link the desktop app.",
   pendingActions: 0,
   pendingSquareIds: new Set<string>(),
   pendingChat: false,
@@ -257,6 +304,20 @@ const isMockMode = () => state.connectionState === "mock";
 const currentViewerSlot = () => currentSnapshot()?.viewer_slot ?? null;
 const isViewerSlot = (slot: PlayerSlot | string | null | undefined) => slot === currentViewerSlot();
 
+function syncPersistedDesktopSession() {
+  const sessionToken = state.sessionToken.trim();
+  if (!sessionToken || sessionToken === "mock-session" || state.connectionState === "mock") {
+    clearPersistedDesktopSession();
+    return;
+  }
+  storePersistedDesktopSession({
+    sessionToken,
+    authViewerId: state.authViewerId.trim(),
+    authViewerName: state.authViewerName.trim(),
+    roomCode: state.roomCode.trim().toUpperCase()
+  });
+}
+
 function storeUserColor(colorHex: string) {
   state.userColorHex = colorHex;
   if (typeof window !== "undefined" && "localStorage" in window) {
@@ -351,6 +412,7 @@ function clearDesktopAuthState() {
   state.authExpiresAtUtc = "";
   state.authViewerId = "";
   state.authViewerName = "";
+  syncPersistedDesktopSession();
 }
 
 function closeSocket() {
@@ -620,10 +682,11 @@ function leaveRoomView() {
   state.connectionState = state.sessionToken ? "connected" : "idle";
   state.syncMessage = "Room browser ready.";
   state.teamNameDraft = "";
+  syncPersistedDesktopSession();
   render();
 }
 
-function clearDesktopSession() {
+function clearDesktopSession(message = "Desktop session cleared.") {
   clearDesktopAuthState();
   clearVisualTimer();
   clearRoomPolling();
@@ -635,11 +698,12 @@ function clearDesktopSession() {
   state.authViewerId = "";
   state.authViewerName = "";
   state.connectionState = "idle";
-  state.syncMessage = "Desktop session cleared.";
+  state.syncMessage = message;
   state.createFormOpen = false;
   state.settingsOpen = false;
   state.userColorDraft = state.userColorHex;
   state.teamNameDraft = "";
+  syncPersistedDesktopSession();
   render();
 }
 
@@ -652,7 +716,8 @@ async function connectToLiveRoom(roomCode = state.roomCode) {
   }
   state.connectionState = "connecting";
   state.syncMessage = `Loading ${roomCode}...`;
-  state.roomCode = roomCode;
+  state.roomCode = roomCode.trim().toUpperCase();
+  syncPersistedDesktopSession();
   render();
   try {
     const snapshot = await fetchSnapshot({
@@ -700,7 +765,12 @@ async function connectToLiveRoom(roomCode = state.roomCode) {
         }
       }
     );
+    syncPersistedDesktopSession();
   } catch (error) {
+    if (error instanceof Error && /\bHTTP (401|403)\b/.test(error.message)) {
+      clearDesktopSession("Desktop session expired. Sign in with Discord again.");
+      return;
+    }
     state.connectionState = "error";
     state.syncMessage = error instanceof Error ? error.message : "Failed to load the room snapshot.";
     render();
@@ -731,8 +801,47 @@ async function loadAvailableRooms() {
       : "No visible rooms yet. Create one to get started.";
     render();
   } catch (error) {
+    if (error instanceof Error && /\bHTTP (401|403)\b/.test(error.message)) {
+      clearDesktopSession("Desktop session expired. Sign in with Discord again.");
+      return;
+    }
     state.connectionState = "error";
     state.syncMessage = error instanceof Error ? error.message : "Failed to load available rooms.";
+    render();
+  }
+}
+
+async function restorePersistedDesktopSession() {
+  if (!state.sessionToken.trim() || isMockMode()) {
+    return;
+  }
+  const rememberedRoomCode = state.roomCode.trim().toUpperCase();
+  state.connectionState = "connecting";
+  state.syncMessage = state.authViewerName
+    ? `Restoring session for ${state.authViewerName}...`
+    : "Restoring desktop session...";
+  render();
+  try {
+    const rooms = await fetchRooms({
+      baseUrl: state.baseUrl,
+      sessionToken: state.sessionToken
+    });
+    state.rooms = rooms.map((room) => cloneSnapshot(room));
+    state.connectionState = "connected";
+    state.syncMessage = state.rooms.length
+      ? "Select a room or create a new one."
+      : "No visible rooms yet. Create one to get started.";
+    render();
+    if (rememberedRoomCode) {
+      await connectToLiveRoom(rememberedRoomCode);
+    }
+  } catch (error) {
+    if (error instanceof Error && /\bHTTP (401|403)\b/.test(error.message)) {
+      clearDesktopSession("Stored desktop session expired. Sign in with Discord again.");
+      return;
+    }
+    state.connectionState = "error";
+    state.syncMessage = error instanceof Error ? error.message : "Failed to restore the desktop session.";
     render();
   }
 }
@@ -768,6 +877,7 @@ async function handleDesktopAuthStatus(status: DesktopAuthRequestStatusResponse)
     state.authViewerName = status.viewer?.username?.trim() || "Discord User";
     state.connectionState = "connected";
     state.syncMessage = `Signed in as ${state.authViewerName}. Loading available rooms...`;
+    syncPersistedDesktopSession();
     render();
     await loadAvailableRooms();
     return;
@@ -798,6 +908,7 @@ async function startDiscordSignIn() {
   state.rooms = [];
   state.roomCode = "";
   state.sessionToken = "";
+  syncPersistedDesktopSession();
   state.createFormOpen = false;
   state.connectionState = "connecting";
   state.syncMessage = "Creating desktop sign-in request...";
@@ -2114,3 +2225,6 @@ function render() {
 }
 
 render();
+if (state.sessionToken.trim() && !isMockMode()) {
+  void restorePersistedDesktopSession();
+}

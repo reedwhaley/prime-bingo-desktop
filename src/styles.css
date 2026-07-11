@@ -658,20 +658,25 @@ button {
 
 .square-star {
   position: absolute;
-  z-index: 2;
-  font-size: 18px;
+  z-index: 3;
+  font-size: 16px;
   color: var(--star);
   text-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
 .square-star-p1 {
-  left: 12px;
-  top: 10px;
+  left: 8px;
+  top: 6px;
 }
 
 .square-star-p2 {
   right: 12px;
   bottom: 10px;
+}
+
+.square-star-p1 ~ .square-text {
+  padding-left: 14px;
+  padding-top: 2px;
 }
 
 .square-text {

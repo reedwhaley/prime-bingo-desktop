@@ -52,7 +52,9 @@ const VARIANT_OPTIONS = [
   { value: "classic", label: "Classic Bingo" },
   { value: "central_dynamo", label: "Central Dynamo Bingo" }
 ] as const;
+const CLASSIC_BOARD_SIZE_OPTIONS = [5] as const;
 const CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS = [7, 9, 11, 13] as const;
+const BOARD_SIZE_OPTIONS = [5, ...CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS] as const;
 const ALGORITHM_OPTIONS = [
   { value: "random", label: "Random" },
   { value: "srlv5", label: "SRLv5" },
@@ -902,7 +904,7 @@ async function submitCreateRoom(form: HTMLFormElement) {
       },
       {
         variant: String(formData.get("variant") || "classic"),
-        board_size: Number(formData.get("board_size") || "7"),
+        board_size: Number(formData.get("board_size") || "5"),
         practice_mode: String(formData.get("practice_mode") || "singles"),
         game_type: String(formData.get("game_type") || "mpr"),
         algorithm: String(formData.get("algorithm") || "random"),
@@ -973,10 +975,10 @@ function renderCreateRoomForm() {
           ${PRACTICE_MODE_OPTIONS.map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join("")}
         </select>
       </label>
-      <label data-central-board-size hidden>
+      <label>
         <span>Board size</span>
-        <select name="board_size">
-          ${CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS.map((size) => `<option value="${size}" ${size === 7 ? "selected" : ""}>${size}x${size}</option>`).join("")}
+        <select name="board_size" data-create-board-size>
+          ${BOARD_SIZE_OPTIONS.map((size) => `<option value="${size}" data-central-only="${size !== 5 ? "true" : "false"}" ${size === 5 ? "selected" : ""}>${size}x${size}</option>`).join("")}
         </select>
       </label>
       <label>
@@ -1805,7 +1807,7 @@ function render() {
 
   const createVariantSelect = app.querySelector<HTMLSelectElement>("[data-create-variant]");
   const createPracticeMode = app.querySelector<HTMLSelectElement>("[data-create-practice-mode]");
-  const createBoardSize = app.querySelector<HTMLElement>("[data-central-board-size]");
+  const createBoardSize = app.querySelector<HTMLSelectElement>("[data-create-board-size]");
   const createHelper = app.querySelector<HTMLElement>("[data-central-helper]");
   const syncCreateVariantUi = () => {
     const isCentral = createVariantSelect?.value === "central_dynamo";
@@ -1815,8 +1817,16 @@ function render() {
         createPracticeMode.value = "team";
       }
     }
-    if (createBoardSize) {
-      createBoardSize.toggleAttribute("hidden", !isCentral);
+    if (createBoardSize instanceof HTMLSelectElement) {
+      for (const option of Array.from(createBoardSize.options)) {
+        const centralOnly = option.dataset.centralOnly === "true";
+        option.hidden = Boolean(!isCentral && centralOnly);
+      }
+      if (isCentral && createBoardSize.value === "5") {
+        createBoardSize.value = String(CENTRAL_DYNAMO_BOARD_SIZE_OPTIONS[0]);
+      } else if (!isCentral && createBoardSize.value !== "5") {
+        createBoardSize.value = String(CLASSIC_BOARD_SIZE_OPTIONS[0]);
+      }
     }
     if (createHelper) {
       createHelper.toggleAttribute("hidden", !isCentral);

@@ -552,28 +552,39 @@ button {
 
 .board-matrix-size-13 {
   gap: 3px;
-  --board-axis-size: 18px;
+  --board-axis-size: 16px;
 }
 
 .board-matrix-size-13 .masked-cell,
 .board-matrix-size-13 .board-square {
-  min-height: 48px;
-  padding: 6px;
+  min-height: 52px;
+  padding: 4px 5px;
   border-radius: 10px;
 }
 
 .board-matrix-size-13 .square-text {
   max-width: none;
-  font-size: 9px;
-  line-height: 1.08;
+  line-height: 1.04;
 }
 
 .board-matrix-size-13 .board-axis-label {
-  font-size: 9px;
+  font-size: 8px;
 }
 
 .board-matrix-size-13 .masked-cell {
-  font-size: 10px;
+  font-size: 8px;
+}
+
+.board-matrix-size-13 .board-square-revealed .square-text-goal {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.board-matrix-size-13 .board-square-hidden .square-text-hidden {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  text-align: left;
 }
 
 .masked-cell,
@@ -671,7 +682,7 @@ button {
   font-size: 18px;
   line-height: 1.36;
   font-weight: 700;
-  text-wrap: balance;
+  text-wrap: pretty;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
 }
 

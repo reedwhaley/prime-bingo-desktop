@@ -1,0 +1,1045 @@
+[
+  {
+    "name": "Destroy 2 Brinstone/Radion Objects",
+    "difficulty": 1,
+    "tags": [
+      "brinstone"
+    ]
+  },
+  {
+    "name": "Defeat the Hive Mecha",
+    "difficulty": 1,
+    "tags": []
+  },
+  {
+    "name": "1 Map Station",
+    "difficulty": 1,
+    "tags": [
+      "map-station"
+    ]
+  },
+  {
+    "name": "1 Chozo Save Station",
+    "difficulty": 1,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Missile Launcher",
+    "difficulty": 1,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Morph Ball",
+    "difficulty": 1,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Morph Ball Bombs",
+    "difficulty": 2,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Ruined Gallery (Tunnel) Item",
+    "difficulty": 2,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Vault Item",
+    "difficulty": 2,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Gathering Hall Item",
+    "difficulty": 2,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Use a Grapple point in 2 rooms",
+    "difficulty": 2,
+    "tags": [
+      "grapple"
+    ]
+  },
+  {
+    "name": "Space Jump Boots",
+    "difficulty": 2,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Scan 4 Runic Symbols",
+    "difficulty": 2,
+    "tags": [
+      "rune"
+    ]
+  },
+  {
+    "name": "Open the gate in Arboretum",
+    "difficulty": 2,
+    "tags": []
+  },
+  {
+    "name": "Break 2 Cordite Objects",
+    "difficulty": 3,
+    "tags": [
+      "cordite"
+    ]
+  },
+  {
+    "name": "Ruined Shrine (Lower) item",
+    "difficulty": 3,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Have 3 E-Tanks",
+    "difficulty": 3,
+    "tags": [
+      "etank"
+    ]
+  },
+  {
+    "name": "Have 1 Suit",
+    "difficulty": 3,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Varia Suit",
+    "difficulty": 3,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "1 Magmoor Save Station",
+    "difficulty": 3,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Defeat 3 Grizbies",
+    "difficulty": 4,
+    "tags": []
+  },
+  {
+    "name": "Break 2 Bendezium Objects",
+    "difficulty": 4,
+    "tags": [
+      "bendezium"
+    ]
+  },
+  {
+    "name": "Defeat the Incinerator Drone",
+    "difficulty": 4,
+    "tags": []
+  },
+  {
+    "name": "Lava Lake item",
+    "difficulty": 4,
+    "tags": [
+      "magmooritem"
+    ]
+  },
+  {
+    "name": "40 Missiles",
+    "difficulty": 4,
+    "tags": [
+      "missile"
+    ]
+  },
+  {
+    "name": "2 Chozo Save Stations",
+    "difficulty": 4,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Watery Hall (Lower) Item",
+    "difficulty": 5,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Activate a Thermal Conduit set",
+    "difficulty": 5,
+    "tags": [
+      "conduit"
+    ]
+  },
+  {
+    "name": "Defeat 2 Plated Beetles",
+    "difficulty": 5,
+    "tags": []
+  },
+  {
+    "name": "Wave Beam",
+    "difficulty": 5,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Scan 8 Runic Symbols",
+    "difficulty": 5,
+    "tags": [
+      "rune"
+    ]
+  },
+  {
+    "name": "2 Power Bombs",
+    "difficulty": 6,
+    "tags": [
+      "power-bomb"
+    ]
+  },
+  {
+    "name": "Break 4 Bendezium Objects",
+    "difficulty": 6,
+    "tags": [
+      "bendezium"
+    ]
+  },
+  {
+    "name": "1 Beam Combo",
+    "difficulty": 6,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "Defeat 2 Magmoors",
+    "difficulty": 6,
+    "tags": []
+  },
+  {
+    "name": "Super Missiles",
+    "difficulty": 6,
+    "tags": [
+      "progression",
+      "combo"
+    ]
+  },
+  {
+    "name": "Use a Save Station in 3 Regions",
+    "difficulty": 6,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Break 4 Cordite Objects",
+    "difficulty": 7,
+    "tags": [
+      "cordite"
+    ]
+  },
+  {
+    "name": "Defeat Flaahgra",
+    "difficulty": 7,
+    "tags": []
+  },
+  {
+    "name": "Defeat a Chozo Ghost",
+    "difficulty": 7,
+    "tags": []
+  },
+  {
+    "name": "Shore Tunnel item",
+    "difficulty": 7,
+    "tags": [
+      "magmooritem"
+    ]
+  },
+  {
+    "name": "Overgrown Cavern item",
+    "difficulty": 7,
+    "tags": [
+      "tallonitem"
+    ]
+  },
+  {
+    "name": "Destroy 4 Brinstone/Radion Objects",
+    "difficulty": 8,
+    "tags": [
+      "brinstone"
+    ]
+  },
+  {
+    "name": "Dynamo (Upper) Item",
+    "difficulty": 8,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Have 6 E-Tanks",
+    "difficulty": 8,
+    "tags": [
+      "etank"
+    ]
+  },
+  {
+    "name": "Ice Beam",
+    "difficulty": 8,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Defeat an adult Sheegoth",
+    "difficulty": 9,
+    "tags": []
+  },
+  {
+    "name": "Use a Grapple point in 5 rooms",
+    "difficulty": 9,
+    "tags": [
+      "grapple"
+    ]
+  },
+  {
+    "name": "1 Phendrana Save Station",
+    "difficulty": 9,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "1 Tallon Save Station",
+    "difficulty": 9,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Furnace (Upper) Item",
+    "difficulty": 10,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Main Plaza (Tree) Item",
+    "difficulty": 10,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Activate 3 Thermal Conduit sets",
+    "difficulty": 10,
+    "tags": [
+      "conduit"
+    ]
+  },
+  {
+    "name": "Arbor Chamber Item",
+    "difficulty": 10,
+    "tags": [
+      "tallonitem"
+    ]
+  },
+  {
+    "name": "Nothing Item",
+    "difficulty": 10,
+    "tags": []
+  },
+  {
+    "name": "Raise the water fully in Ruined Courtyard",
+    "difficulty": 10,
+    "tags": []
+  },
+  {
+    "name": "Disable a Turret",
+    "difficulty": 10,
+    "tags": []
+  },
+  {
+    "name": "Defeat every Stone Toad in Reflecting Pool",
+    "difficulty": 11,
+    "tags": []
+  },
+  {
+    "name": "Ruined Courtyard Item",
+    "difficulty": 11,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Ice Ruins West item",
+    "difficulty": 11,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Boost in 5 Spinners",
+    "difficulty": 11,
+    "tags": [
+      "spinner"
+    ]
+  },
+  {
+    "name": "Boost Ball",
+    "difficulty": 11,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Spider Ball",
+    "difficulty": 11,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "2 Magmoor Save Stations",
+    "difficulty": 11,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Break 8 Bendezium Objects",
+    "difficulty": 12,
+    "tags": [
+      "bendezium"
+    ]
+  },
+  {
+    "name": "2 Beam Combos",
+    "difficulty": 12,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "Defeat an Elite Pirate",
+    "difficulty": 12,
+    "tags": []
+  },
+  {
+    "name": "2 Map Stations",
+    "difficulty": 12,
+    "tags": [
+      "map-station"
+    ]
+  },
+  {
+    "name": "70 Missiles",
+    "difficulty": 12,
+    "tags": [
+      "missile"
+    ]
+  },
+  {
+    "name": "Use 1 Missile Station",
+    "difficulty": 12,
+    "tags": [
+      "missile-station"
+    ]
+  },
+  {
+    "name": "Gravity Suit",
+    "difficulty": 12,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Have 2 Suits",
+    "difficulty": 12,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "2 Phendrana Save Stations",
+    "difficulty": 12,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Use a Save Station in 4 Regions",
+    "difficulty": 12,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Sunchamber (Ghosts) Item",
+    "difficulty": 13,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Tower of Light Item",
+    "difficulty": 13,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Defeat 5 Magmoors",
+    "difficulty": 13,
+    "tags": []
+  },
+  {
+    "name": "Main Quarry Item",
+    "difficulty": 13,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Phendrana Shorelines (Spider Track) Item",
+    "difficulty": 13,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Thermal Visor",
+    "difficulty": 13,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "X-Ray Visor",
+    "difficulty": 13,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "1 Mines Save Station",
+    "difficulty": 13,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Scan 12 Runic Symbols",
+    "difficulty": 13,
+    "tags": [
+      "rune"
+    ]
+  },
+  {
+    "name": "Drain the water in Reflecting Pool",
+    "difficulty": 13,
+    "tags": []
+  },
+  {
+    "name": "Defeat the Phazon Elite",
+    "difficulty": 14,
+    "tags": []
+  },
+  {
+    "name": "Defeat the ghosts in Life Grove",
+    "difficulty": 14,
+    "tags": []
+  },
+  {
+    "name": "Phazon Processing Center item",
+    "difficulty": 14,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Quarantine Monitor Item",
+    "difficulty": 14,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Control Tower item",
+    "difficulty": 14,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Biohazard Containment Item",
+    "difficulty": 14,
+    "tags": [
+      "tallonitem"
+    ]
+  },
+  {
+    "name": "Activate the Observatory",
+    "difficulty": 14,
+    "tags": []
+  },
+  {
+    "name": "Swing on a Glider",
+    "difficulty": 14,
+    "tags": []
+  },
+  {
+    "name": "Defeat 2 Elite Pirates",
+    "difficulty": 14,
+    "tags": []
+  },
+  {
+    "name": "Collect 2 artifacts",
+    "difficulty": 14,
+    "tags": [
+      "artifact"
+    ]
+  },
+  {
+    "name": "Antechamber Item",
+    "difficulty": 15,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Magmoor Workstation Item",
+    "difficulty": 15,
+    "tags": [
+      "magmooritem"
+    ]
+  },
+  {
+    "name": "Research Lab Hydra Item",
+    "difficulty": 15,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Chozo Ice Temple item",
+    "difficulty": 15,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Plasma Beam",
+    "difficulty": 15,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "3 Phendrana Save Stations",
+    "difficulty": 15,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Defeat the Pirates in Control Tower",
+    "difficulty": 15,
+    "tags": []
+  },
+  {
+    "name": "Flamethrower",
+    "difficulty": 15,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "Ice Spreader",
+    "difficulty": 15,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "Wavebuster",
+    "difficulty": 15,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "4 Power Bombs",
+    "difficulty": 16,
+    "tags": [
+      "power-bomb"
+    ]
+  },
+  {
+    "name": "Main Power Bombs",
+    "difficulty": 16,
+    "tags": [
+      "progression",
+      "power-bomb"
+    ]
+  },
+  {
+    "name": "Defeat the Cloaked Drone",
+    "difficulty": 16,
+    "tags": []
+  },
+  {
+    "name": "Activate 6 Thermal Conduit sets",
+    "difficulty": 16,
+    "tags": [
+      "conduit"
+    ]
+  },
+  {
+    "name": "Defeat Thardus",
+    "difficulty": 16,
+    "tags": []
+  },
+  {
+    "name": "Defeat a Chozo Ghost in 3 different rooms",
+    "difficulty": 16,
+    "tags": []
+  },
+  {
+    "name": "Central Dynamo item",
+    "difficulty": 16,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Research Core Item",
+    "difficulty": 16,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Grapple Beam",
+    "difficulty": 16,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "2 Mines Save Stations",
+    "difficulty": 16,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Life Grove Tunnel Item",
+    "difficulty": 16,
+    "tags": [
+      "tallonitem"
+    ]
+  },
+  {
+    "name": "Use a Grapple point in 7 rooms",
+    "difficulty": 17,
+    "tags": [
+      "grapple"
+    ]
+  },
+  {
+    "name": "Break 12 Bendezium Objects",
+    "difficulty": 17,
+    "tags": [
+      "bendezium"
+    ]
+  },
+  {
+    "name": "Boost in 7 Spinners",
+    "difficulty": 17,
+    "tags": [
+      "spinner"
+    ]
+  },
+  {
+    "name": "Defeat a Power Trooper with Super Missiles",
+    "difficulty": 17,
+    "tags": []
+  },
+  {
+    "name": "Break 6 Cordite Objects",
+    "difficulty": 17,
+    "tags": [
+      "cordite"
+    ]
+  },
+  {
+    "name": "Gravity Chamber (Lower) Item",
+    "difficulty": 17,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "Have 4 Beams",
+    "difficulty": 17,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Use a Save Station in 5 Regions",
+    "difficulty": 17,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Elder Chamber Item",
+    "difficulty": 18,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Defeat the Hunter Metroids in Fungal Hall A",
+    "difficulty": 18,
+    "tags": []
+  },
+  {
+    "name": "Have 9 E-Tanks",
+    "difficulty": 18,
+    "tags": [
+      "etank"
+    ]
+  },
+  {
+    "name": "6 Power Bombs",
+    "difficulty": 18,
+    "tags": [
+      "power-bomb"
+    ]
+  },
+  {
+    "name": "4 Phendrana Save Stations",
+    "difficulty": 18,
+    "tags": [
+      "save-station"
+    ]
+  },
+  {
+    "name": "Defeat a Wave Trooper with Wavebuster",
+    "difficulty": 18,
+    "tags": []
+  },
+  {
+    "name": "3 Map Stations",
+    "difficulty": 19,
+    "tags": [
+      "map-station"
+    ]
+  },
+  {
+    "name": "Storage Depot A Item",
+    "difficulty": 19,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "100 Missiles",
+    "difficulty": 19,
+    "tags": [
+      "missile"
+    ]
+  },
+  {
+    "name": "Storage Cave Item",
+    "difficulty": 19,
+    "tags": [
+      "phenitem"
+    ]
+  },
+  {
+    "name": "1 lap around the Geothermal Core Spider Track",
+    "difficulty": 19,
+    "tags": []
+  },
+  {
+    "name": "Training Chamber Item",
+    "difficulty": 20,
+    "tags": [
+      "chozoitem"
+    ]
+  },
+  {
+    "name": "Use both Missile Stations",
+    "difficulty": 20,
+    "tags": [
+      "missile-station"
+    ]
+  },
+  {
+    "name": "Have 4 Visors",
+    "difficulty": 20,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Defeat an Ice Trooper with Ice Spreader",
+    "difficulty": 20,
+    "tags": []
+  },
+  {
+    "name": "Interact with 2 Chozo statues",
+    "difficulty": 20,
+    "tags": []
+  },
+  {
+    "name": "3 Beam Combos",
+    "difficulty": 21,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "Plasma Processing Item",
+    "difficulty": 21,
+    "tags": [
+      "magmooritem"
+    ]
+  },
+  {
+    "name": "Boost in 10 Spinners",
+    "difficulty": 21,
+    "tags": [
+      "spinner"
+    ]
+  },
+  {
+    "name": "130 Missiles",
+    "difficulty": 21,
+    "tags": [
+      "missile"
+    ]
+  },
+  {
+    "name": "Defeat the Omega Pirate",
+    "difficulty": 22,
+    "tags": []
+  },
+  {
+    "name": "Processing Center Access Item",
+    "difficulty": 22,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Have 3 Suits",
+    "difficulty": 22,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Phazon Suit",
+    "difficulty": 22,
+    "tags": [
+      "progression"
+    ]
+  },
+  {
+    "name": "Use a Grapple point in 10 rooms",
+    "difficulty": 23,
+    "tags": [
+      "grapple"
+    ]
+  },
+  {
+    "name": "Metroid Quarantine B Item",
+    "difficulty": 23,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Phazon Mining Tunnel Item",
+    "difficulty": 23,
+    "tags": [
+      "minesitem"
+    ]
+  },
+  {
+    "name": "Defeat a Plasma Trooper with Flamethrower",
+    "difficulty": 23,
+    "tags": []
+  },
+  {
+    "name": "Collect 6 artifacts",
+    "difficulty": 23,
+    "tags": [
+      "artifact"
+    ]
+  },
+  {
+    "name": "Activate 10 Thermal Conduit sets",
+    "difficulty": 24,
+    "tags": [
+      "conduit"
+    ]
+  },
+  {
+    "name": "Have 12 E-Tanks",
+    "difficulty": 24,
+    "tags": [
+      "etank"
+    ]
+  },
+  {
+    "name": "All Hall of the Elders Bomb Slots",
+    "difficulty": 24,
+    "tags": []
+  },
+  {
+    "name": "Defeat Meta Ridley",
+    "difficulty": 24,
+    "tags": []
+  },
+  {
+    "name": "4 Beam Combos",
+    "difficulty": 25,
+    "tags": [
+      "combo"
+    ]
+  },
+  {
+    "name": "8 Power Bombs",
+    "difficulty": 25,
+    "tags": [
+      "power-bomb"
+    ]
+  },
+  {
+    "name": "Defeat Metroid Prime",
+    "difficulty": 25,
+    "tags": []
+  }
+]

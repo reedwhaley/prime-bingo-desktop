@@ -1155,7 +1155,7 @@ function renderBoardSquare(
       ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}
     >
       ${overlays}
-      <span class="square-text">${escapeHtml(square.hidden ? "Hidden" : square.goal_text)}</span>
+      <span class="square-text ${square.hidden ? "square-text-hidden" : "square-text-goal"}">${escapeHtml(square.hidden ? "Hidden" : square.goal_text)}</span>
     </button>
   `;
 }

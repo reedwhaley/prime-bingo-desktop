@@ -6,6 +6,9 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -75,4 +78,3 @@ jobs:
           # its native installer bundles.
           tagName: ${{ github.ref_name }}
           releaseName: Prime Bingo Desktop ${{ github.ref_name }}
-          uploadWorkflowArtifacts: false

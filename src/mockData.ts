@@ -5,8 +5,10 @@ import type { BoardSquare, RoomSnapshot } from "./types";
 type GoalRecord = {
   name?: string;
   difficulty?: number | string;
-  tags?: string[];
+  tags?: string[] | { line?: string[]; board?: string[] };
 };
+
+type GoalFile = GoalRecord[] | { goals?: GoalRecord[] };
 
 type MockSnapshotOverrides =
   Omit<Partial<RoomSnapshot>, "room" | "rules" | "permissions"> & {
@@ -17,8 +19,12 @@ type MockSnapshotOverrides =
 
 const BOARD_SIZE = 5;
 const BOARD_GOAL_COUNT = BOARD_SIZE * BOARD_SIZE;
-const primeGoals = primeGoalsJson as GoalRecord[];
-const echoesGoals = echoesGoalsJson as GoalRecord[];
+function extractGoalPool(goalFile: GoalFile): GoalRecord[] {
+  return Array.isArray(goalFile) ? goalFile : goalFile.goals ?? [];
+}
+
+const primeGoals = extractGoalPool(primeGoalsJson as GoalFile);
+const echoesGoals = extractGoalPool(echoesGoalsJson as GoalFile);
 
 function normalizeGoalPool(goals: GoalRecord[]) {
   return goals.filter((goal): goal is Required<Pick<GoalRecord, "name">> & GoalRecord => typeof goal?.name === "string" && goal.name.trim().length > 0);

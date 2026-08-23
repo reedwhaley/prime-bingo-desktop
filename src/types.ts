@@ -170,6 +170,7 @@ export type RoomSnapshot = {
   chat_messages: ChatMessage[];
   permissions: {
     can_manage_room: boolean;
+    can_view_board_dvr?: boolean;
     can_send_chat: boolean;
     can_act_on_board: boolean;
     can_join_room?: boolean;

@@ -4,6 +4,7 @@ import {
   connectLive,
   createDesktopAuthRequest,
   createRoom,
+  fetchBoardDvrReplay,
   fetchDesktopAuthRequest,
   fetchRooms,
   fetchSnapshot,
@@ -19,6 +20,7 @@ import {
   startRoom,
   updateTeamName
 } from "./api";
+import type { BoardDvrReplay } from "./api";
 import { mockRooms, mockSnapshot } from "./mockData";
 import type {
   ActivityEntry,
@@ -175,7 +177,9 @@ const state = {
   roomFeedScrollTop: 0,
   roomFeedStickBottom: true,
   forceRoomFeedScrollBottom: false,
-  skipTransientCaptureOnce: false
+  skipTransientCaptureOnce: false,
+  boardDvrReplay: null as BoardDvrReplay | null,
+  boardDvrError: ""
 };
 
 const formatTime = (value: string | null | undefined) => {
@@ -453,6 +457,10 @@ function sortRoomFeed(feed: RoomFeedEntry[]) {
 }
 
 function applySnapshot(snapshot: RoomSnapshot, message?: string) {
+  if (state.roomCode && state.roomCode !== snapshot.room.room_code) {
+    state.boardDvrReplay = null;
+    state.boardDvrError = "";
+  }
   state.snapshot = cloneSnapshot(snapshot);
   state.roomCode = snapshot.room.room_code;
   state.teamNameDraft = snapshot.viewer_team_name ?? "";
@@ -678,6 +686,8 @@ function leaveRoomView() {
   clearRoomPolling();
   closeSocket();
   state.snapshot = null;
+  state.boardDvrReplay = null;
+  state.boardDvrError = "";
   state.roomCode = "";
   state.connectionState = state.sessionToken ? "connected" : "idle";
   state.syncMessage = "Room browser ready.";
@@ -1707,6 +1717,48 @@ function renderRoomFeed() {
   `;
 }
 
+function renderBoardDvr() {
+  const snapshot = currentSnapshot();
+  if (!snapshot?.permissions.can_view_board_dvr) {
+    return "";
+  }
+  const replay = state.boardDvrReplay;
+  const events = replay?.events ?? [];
+  return `
+    <section class="tool-card board-dvr-panel">
+      <div class="panel-heading-inline">
+        <span class="section-kicker">Board DVR</span>
+        <span class="room-meta">Staff</span>
+      </div>
+      <p class="muted small">Review the authoritative timeline without changing the live board.</p>
+      <div class="chat-form">
+        <input id="board-dvr-version" type="number" min="0" max="${snapshot.room.version}" value="${replay?.requested_version ?? snapshot.room.version}" aria-label="Replay version" />
+        <button type="button" id="board-dvr-load" class="action-button action-button-secondary">Load</button>
+      </div>
+      ${state.boardDvrError ? `<p class="sync-line">${escapeHtml(state.boardDvrError)}</p>` : ""}
+      <div class="board-dvr-events">
+        ${replay
+          ? events.length
+            ? events
+                .map(
+                  (event) => `
+                    <article class="board-dvr-event">
+                      <div class="feed-entry-meta">
+                        <strong>v${event.version ?? 0} ${escapeHtml(event.type ?? "event")}</strong>
+                        ${event.occurred_at_utc ? `<time class="muted">${escapeHtml(formatLocalDateTime(event.occurred_at_utc))}</time>` : ""}
+                      </div>
+                      <span>${escapeHtml(event.summary ?? "No summary.")}</span>
+                    </article>
+                  `
+                )
+                .join("")
+            : `<p class="empty-copy">No events at this replay version.</p>`
+          : `<p class="empty-copy">Load a version to inspect its event timeline.</p>`}
+      </div>
+    </section>
+  `;
+}
+
 function captureTransientUiState() {
   const feedList = app.querySelector<HTMLElement>(".room-feed-list");
   if (feedList) {
@@ -1778,6 +1830,7 @@ function renderRoomView() {
           ${renderRoomActions()}
           ${renderParticipants()}
           ${renderRoomFeed()}
+          ${renderBoardDvr()}
           ${renderScoredLines()}
         </aside>
       </main>
@@ -2179,6 +2232,25 @@ function render() {
       return;
     }
     void submitChatMessage(form);
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-load")?.addEventListener("click", async () => {
+    const snapshot = currentSnapshot();
+    if (!snapshot || !snapshot.permissions.can_view_board_dvr || isMockMode()) {
+      return;
+    }
+    const input = app.querySelector<HTMLInputElement>("#board-dvr-version");
+    const requestedVersion = Math.max(0, Math.min(snapshot.room.version, Number(input?.value ?? snapshot.room.version) || 0));
+    state.boardDvrError = "";
+    try {
+      state.boardDvrReplay = await fetchBoardDvrReplay(
+        { baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken },
+        requestedVersion
+      );
+    } catch (error) {
+      state.boardDvrError = error instanceof Error ? error.message : "Failed to load Board DVR.";
+    }
+    render();
   });
 
   app.querySelector<HTMLInputElement>('input[name="chat_message"]')?.addEventListener("input", (event) => {

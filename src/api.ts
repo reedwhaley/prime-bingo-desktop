@@ -15,6 +15,19 @@ type ConnectionConfig = {
   sessionToken: string;
 };
 
+export type BoardDvrReplay = {
+  room_code: string;
+  requested_version: number;
+  live_version: number;
+  initial_state: unknown;
+  events: Array<{
+    version?: number;
+    type?: string;
+    summary?: string;
+    occurred_at_utc?: string;
+  }>;
+};
+
 const jsonHeaders = (sessionToken: string) => ({
   "Content-Type": "application/json",
   Authorization: `Bearer ${sessionToken}`
@@ -30,6 +43,19 @@ export async function fetchSnapshot(config: ConnectionConfig): Promise<RoomSnaps
     throw new Error(`Snapshot request failed with HTTP ${response.status}`);
   }
   return response.json() as Promise<RoomSnapshot>;
+}
+
+export async function fetchBoardDvrReplay(config: ConnectionConfig, version: number): Promise<BoardDvrReplay> {
+  const query = new URLSearchParams({ version: String(version) });
+  const response = await fetch(`${config.baseUrl}/api/bingo/rooms/${config.roomCode}/staff/replay?${query}`, {
+    headers: {
+      Authorization: `Bearer ${config.sessionToken}`
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Board DVR request failed with HTTP ${response.status}`);
+  }
+  return response.json() as Promise<BoardDvrReplay>;
 }
 
 export async function fetchRooms(config: Omit<ConnectionConfig, "roomCode">): Promise<RoomSnapshot[]> {

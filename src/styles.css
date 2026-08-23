@@ -790,6 +790,22 @@ button {
   overflow-y: auto;
 }
 
+.board-dvr-events {
+  display: grid;
+  gap: 10px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.board-dvr-event {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 .feed-entry-meta time {
   color: var(--muted);
   font-size: 12px;

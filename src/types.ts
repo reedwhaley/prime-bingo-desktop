@@ -44,6 +44,8 @@ export type BoardSquare = {
   is_start?: boolean;
   claimed_by_slot?: PlayerSlot | null;
   claimed_at_utc?: string | null;
+  completed_by_slot?: PlayerSlot | null;
+  completed_at_utc?: string | null;
   p1_completed_at_utc: string | null;
   p2_completed_at_utc: string | null;
   p1_starred: boolean;
@@ -149,6 +151,8 @@ export type RoomSnapshot = {
     revealed_count: number;
     claimed_total: number;
     claimed_by_slot: Record<PlayerSlot, number>;
+    completed_total?: number;
+    completed_by_slot?: Record<PlayerSlot, number>;
   } | null;
   winner?: {
     board_id: string;

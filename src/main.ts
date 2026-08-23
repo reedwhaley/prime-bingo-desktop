@@ -1267,8 +1267,8 @@ function renderBoardSquare(
     ? `<span class="square-counter">${Math.max(0, Number(viewerCounterValue ?? square.counter_value ?? 0))}/${square.counter.target}</span>`
     : "";
   const overlays = central
-    ? `${square.claimed_by_slot === "p1" ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
-       ${square.claimed_by_slot === "p2" ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
+    ? `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
+       ${square.p2_completed_at_utc ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
        ${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:${p1Star};">&#9733;</span>` : ""}
        ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:${p2Star};">&#9733;</span>` : ""}`
     : fillMode === "single"

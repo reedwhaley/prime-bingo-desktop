@@ -4,6 +4,7 @@ import type {
   DesktopAuthRequestStatusResponse,
   EventResponse,
   LiveEvent,
+  BoardSquare,
   RoomListResponse,
   RoomSnapshot,
   ViewerSettingsResponse
@@ -25,7 +26,18 @@ export type BoardDvrReplay = {
     type?: string;
     summary?: string;
     occurred_at_utc?: string;
+    elapsed_seconds?: number;
   }>;
+  projection?: {
+    state: string;
+    variant: string;
+    board_size: number;
+    boards: Array<{
+      board_id: string;
+      team_name: string;
+      board: BoardSquare[];
+    }>;
+  };
 };
 
 const jsonHeaders = (sessionToken: string) => ({

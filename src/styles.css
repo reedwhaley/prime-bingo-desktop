@@ -637,6 +637,11 @@ button {
   cursor: default;
 }
 
+.board-dvr-square {
+  display: block;
+  cursor: default;
+}
+
 .square-fill {
   position: absolute;
   inset: 0;
@@ -703,6 +708,85 @@ button {
   font-weight: 700;
   text-wrap: pretty;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.desktop-dvr-overlay {
+  position: fixed;
+  z-index: 40;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 7, 15, 0.76);
+  backdrop-filter: blur(8px);
+}
+
+.desktop-dvr-dialog {
+  width: min(1440px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--line-strong);
+  border-radius: 24px;
+  background: linear-gradient(145deg, rgba(26, 37, 59, 0.98), rgba(9, 15, 27, 0.98));
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5);
+}
+
+.dvr-dialog-heading,
+.dvr-transport,
+.dvr-board-picker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dvr-dialog-heading {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+
+.dvr-dialog-heading h2 {
+  margin: 4px 0 0;
+}
+
+.dvr-transport {
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.dvr-transport label,
+.dvr-board-picker {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.dvr-transport select,
+.dvr-board-picker select {
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  background: rgba(8, 14, 26, 0.9);
+}
+
+.dvr-scrubber {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.dvr-event-label {
+  margin: 6px 0 16px;
+  color: var(--muted);
+}
+
+.dvr-board-picker {
+  justify-content: flex-end;
+  margin: 0 0 12px;
+}
+
+.board-dvr-matrix {
+  min-width: 620px;
 }
 
 .team-panel {

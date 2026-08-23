@@ -179,7 +179,11 @@ const state = {
   forceRoomFeedScrollBottom: false,
   skipTransientCaptureOnce: false,
   boardDvrReplay: null as BoardDvrReplay | null,
-  boardDvrError: ""
+  boardDvrError: "",
+  boardDvrOpen: false,
+  boardDvrPlaying: false,
+  boardDvrTimer: 0 as number | 0,
+  boardDvrBoardId: ""
 };
 
 const formatTime = (value: string | null | undefined) => {
@@ -458,8 +462,11 @@ function sortRoomFeed(feed: RoomFeedEntry[]) {
 
 function applySnapshot(snapshot: RoomSnapshot, message?: string) {
   if (state.roomCode && state.roomCode !== snapshot.room.room_code) {
+    clearBoardDvrPlayback();
     state.boardDvrReplay = null;
     state.boardDvrError = "";
+    state.boardDvrOpen = false;
+    state.boardDvrBoardId = "";
   }
   state.snapshot = cloneSnapshot(snapshot);
   state.roomCode = snapshot.room.room_code;
@@ -685,9 +692,12 @@ function setMockPreview() {
 function leaveRoomView() {
   clearRoomPolling();
   closeSocket();
+  clearBoardDvrPlayback();
   state.snapshot = null;
   state.boardDvrReplay = null;
   state.boardDvrError = "";
+  state.boardDvrOpen = false;
+  state.boardDvrBoardId = "";
   state.roomCode = "";
   state.connectionState = state.sessionToken ? "connected" : "idle";
   state.syncMessage = "Room browser ready.";
@@ -1717,46 +1727,149 @@ function renderRoomFeed() {
   `;
 }
 
+function formatReplayElapsed(seconds: number | undefined) {
+  if (!Number.isFinite(Number(seconds))) {
+    return "Pre-race";
+  }
+  const negative = Number(seconds) < 0;
+  const total = Math.abs(Math.floor(Number(seconds)));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const remainingSeconds = total % 60;
+  return `T${negative ? "-" : "+"}${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
+function renderReplaySquare(square: BoardSquare, variant: string) {
+  const central = variant === "central_dynamo";
+  const counterValue = Math.max(0, Number(square.counter_value ?? square.p1_counter_value ?? 0));
+  const counterLabel = square.counter ? `<span class="square-counter">${counterValue}/${square.counter.target}</span>` : "";
+  const overlays = central
+    ? `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-full" style="--fill:#e73563;"></span>` : ""}
+       ${square.p2_completed_at_utc ? `<span class="square-fill square-fill-full" style="--fill:#35b9ad;"></span>` : ""}`
+    : `${square.p1_completed_at_utc ? `<span class="square-fill square-fill-p1" style="--fill:#e73563;"></span>` : ""}
+       ${square.p2_completed_at_utc ? `<span class="square-fill square-fill-p2" style="--fill:#35b9ad;"></span>` : ""}`;
+  const stars = `${square.p1_starred ? `<span class="square-star square-star-p1" style="--star:#ffd166;">&#9733;</span>` : ""}
+    ${square.p2_starred ? `<span class="square-star square-star-p2" style="--star:#a8e6ff;">&#9733;</span>` : ""}`;
+  return `
+    <article class="board-square board-dvr-square ${square.hidden ? "board-square-hidden" : "board-square-revealed"}" ${square.difficulty_color && !square.hidden ? `style="--difficulty:${escapeHtml(square.difficulty_color)};"` : ""}>
+      ${overlays}${stars}${counterLabel}
+      <span class="square-text ${square.hidden ? "square-text-hidden" : "square-text-goal"}">${escapeHtml(square.hidden ? "Hidden" : square.goal_text)}</span>
+    </article>
+  `;
+}
+
+function renderReplayBoard(replay: BoardDvrReplay) {
+  const projection = replay.projection;
+  if (!projection?.boards?.length) {
+    return `<p class="empty-copy">The server did not provide a replay board for this event.</p>`;
+  }
+  const selectedBoard = projection.boards.find((board) => board.board_id === state.boardDvrBoardId) ?? projection.boards[0];
+  const boardSize = projection.board_size;
+  const squares = new Map(selectedBoard.board.map((square) => [`${square.row_index}:${square.column_index}`, square]));
+  const cells: string[] = [];
+  for (let row = 0; row < boardSize; row += 1) {
+    cells.push(`<span class="board-axis-label board-axis-label-y" aria-hidden="true">${row + 1}</span>`);
+    for (let column = 0; column < boardSize; column += 1) {
+      const square = squares.get(`${row}:${column}`);
+      cells.push(square ? renderReplaySquare(square, projection.variant) : `<article class="masked-cell">Hidden</article>`);
+    }
+  }
+  return `
+    ${projection.boards.length > 1 ? `<label class="dvr-board-picker">Board <select id="board-dvr-board">${projection.boards.map((board) => `<option value="${escapeHtml(board.board_id)}" ${board.board_id === selectedBoard.board_id ? "selected" : ""}>${escapeHtml(board.team_name || board.board_id)}</option>`).join("")}</select></label>` : ""}
+    <div class="board-matrix board-matrix-size-${boardSize} board-dvr-matrix" style="--board-columns:${boardSize};">
+      <span class="board-axis-corner" aria-hidden="true"></span>
+      ${Array.from({ length: boardSize }, (_, index) => `<span class="board-axis-label board-axis-label-x" aria-hidden="true">${index + 1}</span>`).join("")}
+      ${cells.join("")}
+    </div>
+  `;
+}
+
 function renderBoardDvr() {
   const snapshot = currentSnapshot();
   if (!snapshot?.permissions.can_view_board_dvr) {
     return "";
   }
   const replay = state.boardDvrReplay;
-  const events = replay?.events ?? [];
+  const event = replay?.events[replay.events.length - 1];
+  const selectedVersion = replay?.requested_version ?? snapshot.room.version;
   return `
     <section class="tool-card board-dvr-panel">
-      <div class="panel-heading-inline">
-        <span class="section-kicker">Board DVR</span>
-        <span class="room-meta">Staff</span>
-      </div>
+      <div class="panel-heading-inline"><span class="section-kicker">Board DVR</span><span class="room-meta">Staff</span></div>
       <p class="muted small">Review the authoritative timeline without changing the live board.</p>
       <div class="chat-form">
-        <input id="board-dvr-version" type="number" min="0" max="${snapshot.room.version}" value="${replay?.requested_version ?? snapshot.room.version}" aria-label="Replay version" />
-        <button type="button" id="board-dvr-load" class="action-button action-button-secondary">Load</button>
+        <input id="board-dvr-version" type="number" min="0" max="${snapshot.room.version}" value="${selectedVersion}" aria-label="Replay event" />
+        <button type="button" id="board-dvr-load" class="action-button action-button-secondary">Open replay</button>
       </div>
       ${state.boardDvrError ? `<p class="sync-line">${escapeHtml(state.boardDvrError)}</p>` : ""}
-      <div class="board-dvr-events">
-        ${replay
-          ? events.length
-            ? events
-                .map(
-                  (event) => `
-                    <article class="board-dvr-event">
-                      <div class="feed-entry-meta">
-                        <strong>v${event.version ?? 0} ${escapeHtml(event.type ?? "event")}</strong>
-                        ${event.occurred_at_utc ? `<time class="muted">${escapeHtml(formatLocalDateTime(event.occurred_at_utc))}</time>` : ""}
-                      </div>
-                      <span>${escapeHtml(event.summary ?? "No summary.")}</span>
-                    </article>
-                  `
-                )
-                .join("")
-            : `<p class="empty-copy">No events at this replay version.</p>`
-          : `<p class="empty-copy">Load a version to inspect its event timeline.</p>`}
-      </div>
     </section>
+    ${state.boardDvrOpen && replay ? `
+      <div class="desktop-dvr-overlay" role="presentation">
+        <section class="desktop-dvr-dialog" role="dialog" aria-modal="true" aria-label="Board DVR replay">
+          <div class="dvr-dialog-heading"><div><span class="section-kicker">Board DVR</span><h2>Event ${replay.requested_version} · ${formatReplayElapsed(event?.elapsed_seconds)}</h2></div><button id="board-dvr-close" type="button" class="action-button action-button-secondary">Close</button></div>
+          <div class="dvr-transport" aria-label="Replay controls">
+            <button id="board-dvr-start" type="button" class="action-button action-button-secondary">|&lt;</button>
+            <button id="board-dvr-prev" type="button" class="action-button action-button-secondary">Previous</button>
+            <button id="board-dvr-play" type="button" class="action-button action-button-primary">${state.boardDvrPlaying ? "Pause" : "Play"}</button>
+            <button id="board-dvr-next" type="button" class="action-button action-button-secondary">Next</button>
+            <button id="board-dvr-end" type="button" class="action-button action-button-secondary">&gt;|</button>
+            <label>Speed <select id="board-dvr-speed"><option value="2000">0.5x</option><option value="1000" selected>1x</option><option value="500">2x</option><option value="250">4x</option></select></label>
+          </div>
+          <input id="board-dvr-scrubber" class="dvr-scrubber" type="range" min="0" max="${replay.live_version}" value="${replay.requested_version}" aria-label="Replay event" />
+          <p class="dvr-event-label">Event ${replay.requested_version} / ${replay.live_version}${event?.summary ? ` · ${escapeHtml(event.summary)}` : ""}</p>
+          ${renderReplayBoard(replay)}
+        </section>
+      </div>
+    ` : ""}
   `;
+}
+
+function clearBoardDvrPlayback() {
+  if (state.boardDvrTimer) {
+    window.clearTimeout(state.boardDvrTimer);
+  }
+  state.boardDvrTimer = 0;
+  state.boardDvrPlaying = false;
+}
+
+async function loadBoardDvr(requestedVersion: number, openReplay = true) {
+  const snapshot = currentSnapshot();
+  if (!snapshot || !snapshot.permissions.can_view_board_dvr || isMockMode()) {
+    return;
+  }
+  const version = Math.max(0, Math.min(snapshot.room.version, Math.floor(requestedVersion)));
+  state.boardDvrError = "";
+  try {
+    state.boardDvrReplay = await fetchBoardDvrReplay(
+      { baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken },
+      version
+    );
+    const boardIds = state.boardDvrReplay.projection?.boards.map((board) => board.board_id) ?? [];
+    if (!boardIds.includes(state.boardDvrBoardId)) {
+      state.boardDvrBoardId = boardIds[0] ?? "";
+    }
+    state.boardDvrOpen = openReplay || state.boardDvrOpen;
+  } catch (error) {
+    clearBoardDvrPlayback();
+    state.boardDvrError = error instanceof Error ? error.message : "Failed to load Board DVR.";
+  }
+  render();
+}
+
+function scheduleBoardDvrPlayback(delayMs: number) {
+  clearBoardDvrPlayback();
+  const replay = state.boardDvrReplay;
+  if (!replay || replay.requested_version >= replay.live_version) {
+    render();
+    return;
+  }
+  state.boardDvrPlaying = true;
+  state.boardDvrTimer = window.setTimeout(async () => {
+    await loadBoardDvr(replay.requested_version + 1, false);
+    if (state.boardDvrPlaying) {
+      scheduleBoardDvrPlayback(delayMs);
+    }
+  }, delayMs);
+  render();
 }
 
 function captureTransientUiState() {
@@ -2234,22 +2347,73 @@ function render() {
     void submitChatMessage(form);
   });
 
-  app.querySelector<HTMLButtonElement>("#board-dvr-load")?.addEventListener("click", async () => {
+  app.querySelector<HTMLButtonElement>("#board-dvr-load")?.addEventListener("click", () => {
     const snapshot = currentSnapshot();
     if (!snapshot || !snapshot.permissions.can_view_board_dvr || isMockMode()) {
       return;
     }
     const input = app.querySelector<HTMLInputElement>("#board-dvr-version");
     const requestedVersion = Math.max(0, Math.min(snapshot.room.version, Number(input?.value ?? snapshot.room.version) || 0));
-    state.boardDvrError = "";
-    try {
-      state.boardDvrReplay = await fetchBoardDvrReplay(
-        { baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken },
-        requestedVersion
-      );
-    } catch (error) {
-      state.boardDvrError = error instanceof Error ? error.message : "Failed to load Board DVR.";
+    void loadBoardDvr(requestedVersion);
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-close")?.addEventListener("click", () => {
+    clearBoardDvrPlayback();
+    state.boardDvrOpen = false;
+    render();
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-start")?.addEventListener("click", () => {
+    clearBoardDvrPlayback();
+    void loadBoardDvr(0, false);
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-prev")?.addEventListener("click", () => {
+    clearBoardDvrPlayback();
+    void loadBoardDvr(Math.max(0, (state.boardDvrReplay?.requested_version ?? 0) - 1), false);
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-next")?.addEventListener("click", () => {
+    clearBoardDvrPlayback();
+    const replay = state.boardDvrReplay;
+    if (replay) {
+      void loadBoardDvr(Math.min(replay.live_version, replay.requested_version + 1), false);
     }
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-end")?.addEventListener("click", () => {
+    clearBoardDvrPlayback();
+    const replay = state.boardDvrReplay;
+    if (replay) {
+      void loadBoardDvr(replay.live_version, false);
+    }
+  });
+
+  app.querySelector<HTMLButtonElement>("#board-dvr-play")?.addEventListener("click", () => {
+    if (state.boardDvrPlaying) {
+      clearBoardDvrPlayback();
+      render();
+      return;
+    }
+    const speed = Number(app.querySelector<HTMLSelectElement>("#board-dvr-speed")?.value ?? 1000);
+    scheduleBoardDvrPlayback(speed);
+  });
+
+  app.querySelector<HTMLInputElement>("#board-dvr-scrubber")?.addEventListener("input", (event) => {
+    const input = event.currentTarget;
+    if (!(input instanceof HTMLInputElement)) {
+      return;
+    }
+    clearBoardDvrPlayback();
+    void loadBoardDvr(Number(input.value), false);
+  });
+
+  app.querySelector<HTMLSelectElement>("#board-dvr-board")?.addEventListener("change", (event) => {
+    const input = event.currentTarget;
+    if (!(input instanceof HTMLSelectElement)) {
+      return;
+    }
+    state.boardDvrBoardId = input.value;
     render();
   });
 

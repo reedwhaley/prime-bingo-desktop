@@ -6,6 +6,7 @@ type GoalRecord = {
   name?: string;
   difficulty?: number | string;
   tags?: string[] | { line?: string[]; board?: string[] };
+  counter?: { target?: number; step?: number };
 };
 
 type GoalFile = GoalRecord[] | { goals?: GoalRecord[] };
@@ -19,6 +20,27 @@ type MockSnapshotOverrides =
 
 const BOARD_SIZE = 5;
 const BOARD_GOAL_COUNT = BOARD_SIZE * BOARD_SIZE;
+type MockGoal = { text: string; counter: { target: number; step: number } | null };
+
+function inferGoalCounter(name: string, counter?: GoalRecord["counter"]): MockGoal["counter"] {
+  const explicitTarget = Number(counter?.target ?? 0);
+  const explicitStep = Number(counter?.step ?? 0);
+  if (explicitTarget > 0 && explicitStep > 0) {
+    return { target: explicitTarget, step: Math.min(explicitTarget, explicitStep) };
+  }
+
+  const quantityMatch = /(?:^|[^A-Za-z0-9])(\d+)(?![A-Za-z])/.exec(name);
+  if (!quantityMatch) return null;
+  const target = Number(quantityMatch[1]);
+  if (!Number.isFinite(target) || target <= 0) return null;
+  const step = /\b(?:light|dark)\s+ammo\b/i.test(name)
+    ? 20
+    : target >= 20 && /\bmissiles?\b/i.test(name)
+      ? 5
+      : 1;
+  return { target, step: Math.min(target, step) };
+}
+
 function extractGoalPool(goalFile: GoalFile): GoalRecord[] {
   return Array.isArray(goalFile) ? goalFile : goalFile.goals ?? [];
 }
@@ -46,13 +68,17 @@ function mergeGoalPools(...pools: GoalRecord[][]) {
   return merged;
 }
 
-function sampleGoalTexts(pool: GoalRecord[], count = BOARD_GOAL_COUNT) {
+function sampleGoals(pool: GoalRecord[], count = BOARD_GOAL_COUNT): MockGoal[] {
   const normalized = normalizeGoalPool(pool);
-  return Array.from({ length: count }, (_, index) => normalized[index % normalized.length]?.name.trim() || `Goal ${index + 1}`);
+  return Array.from({ length: count }, (_, index) => {
+    const goal = normalized[index % normalized.length];
+    const text = goal?.name.trim() || `Goal ${index + 1}`;
+    return { text, counter: inferGoalCounter(text, goal?.counter) };
+  });
 }
 
 function buildBoard(
-  goalTexts: string[],
+  goals: MockGoal[],
   options: {
     p1Completed?: number[];
     p2Completed?: number[];
@@ -64,23 +90,26 @@ function buildBoard(
   const p2Completed = new Set(options.p2Completed ?? []);
   const p1Starred = new Set(options.p1Starred ?? []);
   const p2Starred = new Set(options.p2Starred ?? []);
-  return goalTexts.map((goal_text, index) => ({
+  return goals.map((goal, index) => ({
     square_id: `sq-${Math.floor(index / BOARD_SIZE)}-${index % BOARD_SIZE}`,
     goal_id: `goal-${index + 1}`,
-    goal_text,
+    goal_text: goal.text,
     row_index: Math.floor(index / BOARD_SIZE),
     column_index: index % BOARD_SIZE,
     p1_completed_at_utc: p1Completed.has(index) ? "2026-05-27T19:07:00Z" : null,
     p2_completed_at_utc: p2Completed.has(index) ? "2026-05-27T19:09:00Z" : null,
     p1_starred: p1Starred.has(index),
     p2_starred: p2Starred.has(index),
-    counter_value: null
+    counter_value: null,
+    counter: goal.counter,
+    p1_counter_value: 0,
+    p2_counter_value: 0
   }));
 }
 
-const mprGoalTexts = sampleGoalTexts(primeGoals);
-const mp2rGoalTexts = sampleGoalTexts(echoesGoals);
-const mpcgrGoalTexts = sampleGoalTexts(mergeGoalPools(primeGoals, echoesGoals));
+const mprGoals = sampleGoals(primeGoals);
+const mp2rGoals = sampleGoals(echoesGoals);
+const mpcgrGoals = sampleGoals(mergeGoalPools(primeGoals, echoesGoals));
 
 function createSnapshot(overrides: MockSnapshotOverrides): RoomSnapshot {
   const { room, rules, permissions, ...rest } = overrides;
@@ -168,7 +197,7 @@ function createSnapshot(overrides: MockSnapshotOverrides): RoomSnapshot {
       }
     ],
     board_visible: true,
-    board: buildBoard(mprGoalTexts, {
+    board: buildBoard(mprGoals, {
       p1Completed: [0, 1, 2, 3, 4, 9],
       p2Completed: [2, 3, 4, 7, 9, 14],
       p1Starred: [1, 10, 18],
@@ -281,7 +310,7 @@ const mockMp2rSnapshot: RoomSnapshot = createSnapshot({
     generation_algorithm: "random",
     version: 64
   },
-  board: buildBoard(mp2rGoalTexts, {
+  board: buildBoard(mp2rGoals, {
     p1Completed: [0, 5, 10],
     p2Completed: [20, 21, 22],
     p1Starred: [6, 12],
@@ -302,7 +331,7 @@ const mockMpcgrSnapshot: RoomSnapshot = createSnapshot({
     generation_algorithm: "isaac",
     version: 91
   },
-  board: buildBoard(mpcgrGoalTexts, {
+  board: buildBoard(mpcgrGoals, {
     p1Completed: [0, 1, 2, 6],
     p2Completed: [12, 17, 22],
     p1Starred: [8],

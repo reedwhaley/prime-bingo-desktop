@@ -1614,26 +1614,14 @@ function renderControls() {
   if (!hasLoadedRoom()) {
     return "";
   }
-  if (isCentralDynamo()) {
-    return `
-      <section class="tool-card">
-        <span class="section-kicker">Controls</span>
-        <div class="control-list">
-          <span><strong>Click</strong> claim</span>
-          <span><strong>Shift + click</strong> star</span>
-          <span><strong>Shift + right click</strong> unstar</span>
-        </div>
-      </section>
-    `;
-  }
   return `
     <section class="tool-card">
       <span class="section-kicker">Controls</span>
       <div class="control-list">
-        <span><strong>Click</strong> complete</span>
-        <span><strong>Right click</strong> clear</span>
-        <span><strong>Shift + click</strong> star</span>
-        <span><strong>Shift + right click</strong> unstar</span>
+        <span><strong>Left click</strong> toggle completion</span>
+        <span><strong>Right click</strong> toggle star</span>
+        <span><strong>Mouse wheel up</strong> increment a numeric goal</span>
+        <span><strong>Mouse wheel down</strong> decrement a numeric goal</span>
       </div>
     </section>
   `;
@@ -1885,12 +1873,6 @@ function render() {
         return;
       }
       void submitSquareAction(squareId, "goal.star.toggle");
-    });
-    button.addEventListener("auxclick", (event) => {
-      if (event.button !== 1 || !button.querySelector(".square-counter")) return;
-      event.preventDefault();
-      const squareId = button.dataset.squareId;
-      if (squareId) void submitSquareAction(squareId, event.shiftKey ? "goal.counter.decrement" : "goal.counter.increment");
     });
     button.addEventListener("wheel", (event) => {
       if (!button.querySelector(".square-counter")) return;

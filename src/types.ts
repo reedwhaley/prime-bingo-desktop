@@ -49,6 +49,9 @@ export type BoardSquare = {
   p1_starred: boolean;
   p2_starred: boolean;
   counter_value: number | null;
+  counter?: { target: number; step: number } | null;
+  p1_counter_value?: number;
+  p2_counter_value?: number;
 };
 
 export type AwardedLine = {
@@ -101,6 +104,8 @@ export type RoomSnapshot = {
     game_type: string;
     board_format: string;
     generation_algorithm: string;
+    fog_of_war?: boolean;
+    show_actual_goal_to_opponents?: boolean;
     start_at_utc: string | null;
     activated_at_utc: string | null;
     finished_at_utc: string | null;
@@ -117,6 +122,7 @@ export type RoomSnapshot = {
     board_size?: number;
     win_condition?: string;
     fog_of_war?: boolean;
+    show_actual_goal_to_opponents?: boolean;
     allow_player_unclaim?: boolean;
     allow_staff_unclaim?: boolean;
   };
@@ -168,6 +174,7 @@ export type RoomSnapshot = {
     can_edit_team_name?: boolean;
     can_report_done?: boolean;
     can_report_forfeit?: boolean;
+    can_reroll_room?: boolean;
   };
 };
 

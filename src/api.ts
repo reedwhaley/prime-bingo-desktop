@@ -54,6 +54,8 @@ export async function createRoom(
     game_type: string;
     algorithm: string;
     visibility: string;
+    fog_of_war?: boolean;
+    show_actual_goal_to_opponents?: boolean;
   }
 ): Promise<CreateRoomResponse> {
   const response = await fetch(`${config.baseUrl}/api/bingo/rooms`, {
@@ -119,7 +121,7 @@ export async function saveViewerSettings(
 export async function sendBoardAction(
   config: ConnectionConfig,
   squareId: string,
-  actionType: "goal.complete" | "goal.clear" | "goal.star.add" | "goal.star.remove"
+  actionType: "goal.toggle" | "goal.star.toggle" | "goal.counter.increment" | "goal.counter.decrement"
 ): Promise<EventResponse> {
   const response = await fetch(`${config.baseUrl}/api/bingo/rooms/${config.roomCode}/events`, {
     method: "POST",
@@ -172,6 +174,10 @@ export function startRoom(config: ConnectionConfig) {
 
 export function finishRoom(config: ConnectionConfig) {
   return postRoomAction(config, "finish");
+}
+
+export function rerollRoom(config: ConnectionConfig) {
+  return postRoomAction(config, "reroll");
 }
 
 export function reportRoomResult(config: ConnectionConfig, result: "done" | "forfeit") {

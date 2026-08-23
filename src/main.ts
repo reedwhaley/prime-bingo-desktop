@@ -4,7 +4,6 @@ import {
   connectLive,
   createDesktopAuthRequest,
   createRoom,
-  finishRoom,
   fetchDesktopAuthRequest,
   fetchRooms,
   fetchSnapshot,
@@ -12,6 +11,7 @@ import {
   joinRoomTarget,
   leaveRoom,
   reportRoomResult,
+  rerollRoom,
   saveViewerSettings,
   sendBoardAction,
   sendChatMessage,
@@ -929,7 +929,7 @@ async function startDiscordSignIn() {
   }
 }
 
-async function submitSquareAction(squareId: string, actionType: "goal.complete" | "goal.clear" | "goal.star.add" | "goal.star.remove") {
+async function submitSquareAction(squareId: string, actionType: "goal.toggle" | "goal.star.toggle" | "goal.counter.increment" | "goal.counter.decrement") {
   if (!state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
     return;
   }
@@ -1019,7 +1019,9 @@ async function submitCreateRoom(form: HTMLFormElement) {
         practice_mode: String(formData.get("practice_mode") || "singles"),
         game_type: String(formData.get("game_type") || "mpr"),
         algorithm: String(formData.get("algorithm") || "random"),
-        visibility: String(formData.get("visibility") || "private")
+        visibility: String(formData.get("visibility") || "private"),
+        fog_of_war: String(formData.get("fog_of_war") || "off") === "on",
+        show_actual_goal_to_opponents: String(formData.get("show_actual_goal_to_opponents") || "off") === "on"
       }
     );
     state.createFormOpen = false;
@@ -1109,6 +1111,20 @@ function renderCreateRoomForm() {
         <select name="visibility">
           <option value="private" selected>Private</option>
           <option value="public">Public</option>
+        </select>
+      </label>
+      <label>
+        <span>Fog of war</span>
+        <select name="fog_of_war">
+          <option value="off" selected>Off</option>
+          <option value="on">On</option>
+        </select>
+      </label>
+      <label>
+        <span>Show actual goal to opponents</span>
+        <select name="show_actual_goal_to_opponents">
+          <option value="off" selected>Off</option>
+          <option value="on">On</option>
         </select>
       </label>
       <div class="empty-copy" data-central-helper hidden>Central Dynamo is fixed 2v2 team mode with opposite-corner starts on a shared board.</div>
@@ -1246,6 +1262,10 @@ function renderBoardSquare(
   }
 ) {
   const { central, fillMode, p1Fill, p2Fill, p1Star, p2Star } = options;
+  const viewerCounterValue = snapshot.viewer_slot === "p2" ? square.p2_counter_value : square.p1_counter_value;
+  const counterLabel = square.counter
+    ? `<span class="square-counter">${Math.max(0, Number(viewerCounterValue ?? square.counter_value ?? 0))}/${square.counter.target}</span>`
+    : "";
   const overlays = central
     ? `${square.claimed_by_slot === "p1" ? `<span class="square-fill square-fill-full" style="--fill:${p1Fill};"></span>` : ""}
        ${square.claimed_by_slot === "p2" ? `<span class="square-fill square-fill-full" style="--fill:${p2Fill};"></span>` : ""}
@@ -1268,6 +1288,7 @@ function renderBoardSquare(
       ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}
     >
       ${overlays}
+      ${counterLabel}
       <span class="square-text ${square.hidden ? "square-text-hidden" : "square-text-goal"}">${escapeHtml(square.hidden ? "Hidden" : square.goal_text)}</span>
     </button>
   `;
@@ -1359,6 +1380,7 @@ function renderBoardStage() {
           <span class="section-kicker">Active Room</span>
           <h2>${escapeHtml(snapshot.room.room_code)}</h2>
           <p>${escapeHtml(snapshot.room.room_type)} · ${escapeHtml(formatPracticeModeLabel(snapshot.room.practice_mode))} · ${escapeHtml(snapshot.room.game_type.toUpperCase())} · ${escapeHtml(snapshot.room.generation_algorithm.toUpperCase())}</p>
+          <p>${escapeHtml(central ? "Central Dynamo" : "Classic Bingo")} · ${escapeHtml(snapshot.room.board_format)}</p>
         </div>
         <div class="board-head-actions">
           <button type="button" class="action-button action-button-ghost board-back-button" id="back-to-browser-button">Back</button>
@@ -1447,8 +1469,9 @@ function renderRoomActions() {
   const canEditTeamName = Boolean(snapshot.permissions.can_edit_team_name);
   const canReportDone = Boolean(snapshot.permissions.can_report_done);
   const canReportForfeit = Boolean(snapshot.permissions.can_report_forfeit);
+  const canRerollRoom = Boolean(snapshot.permissions.can_reroll_room);
 
-  if (!canJoinRoom && !canLeaveRoom && !canReadyRoom && !canManageRoom && !canReportDone && !canReportForfeit && !canEditTeamName && !(central && snapshot.join_targets?.length)) {
+  if (!canJoinRoom && !canLeaveRoom && !canReadyRoom && !canManageRoom && !canReportDone && !canReportForfeit && !canRerollRoom && !canEditTeamName && !(central && snapshot.join_targets?.length)) {
     return "";
   }
 
@@ -1509,12 +1532,8 @@ function renderRoomActions() {
             ? `<button type="button" class="action-button action-button-secondary" data-room-action="start">Start room</button>`
             : ""
         }
-        ${
-          canManageRoom && snapshot.room.state !== "finished"
-            ? `<button type="button" class="action-button action-button-secondary" data-room-action="finish">Finish room</button>`
-            : ""
-        }
-      </div>
+        ${canRerollRoom ? `<button type="button" class="action-button action-button-secondary" data-room-action="reroll">Reroll board</button>` : ""}
+        </div>
       ${
         canEditTeamName
           ? `
@@ -1857,8 +1876,7 @@ function render() {
       if (!squareId || state.pendingSquareIds.has(squareId)) {
         return;
       }
-      const actionType = event.shiftKey ? "goal.star.add" : "goal.complete";
-      void submitSquareAction(squareId, actionType);
+      void submitSquareAction(squareId, "goal.toggle");
     });
     button.addEventListener("contextmenu", (event) => {
       event.preventDefault();
@@ -1866,12 +1884,20 @@ function render() {
       if (!squareId || state.pendingSquareIds.has(squareId)) {
         return;
       }
-      const actionType = event.shiftKey ? "goal.star.remove" : isCentralDynamo() ? null : "goal.clear";
-      if (!actionType) {
-        return;
-      }
-      void submitSquareAction(squareId, actionType);
+      void submitSquareAction(squareId, "goal.star.toggle");
     });
+    button.addEventListener("auxclick", (event) => {
+      if (event.button !== 1 || !button.querySelector(".square-counter")) return;
+      event.preventDefault();
+      const squareId = button.dataset.squareId;
+      if (squareId) void submitSquareAction(squareId, event.shiftKey ? "goal.counter.decrement" : "goal.counter.increment");
+    });
+    button.addEventListener("wheel", (event) => {
+      if (!button.querySelector(".square-counter")) return;
+      event.preventDefault();
+      const squareId = button.dataset.squareId;
+      if (squareId) void submitSquareAction(squareId, event.deltaY > 0 ? "goal.counter.decrement" : "goal.counter.increment");
+    }, { passive: false });
   });
 
   app.querySelector<HTMLButtonElement>("#sign-in-button")?.addEventListener("click", () => {
@@ -2109,15 +2135,10 @@ function render() {
         return;
       }
 
-      if (action === "finish") {
+      if (action === "reroll") {
         void submitRoomMutation(
-          () =>
-            finishRoom({
-              baseUrl: state.baseUrl,
-              roomCode: state.roomCode,
-              sessionToken: state.sessionToken
-            }),
-          "Room finished."
+          () => rerollRoom({ baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken }),
+          "Board rerolled."
         );
         return;
       }

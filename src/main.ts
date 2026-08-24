@@ -8,6 +8,7 @@ import {
   fetchDesktopAuthRequest,
   fetchRooms,
   fetchSnapshot,
+  fetchViewerSettings,
   joinRoomGeneric,
   joinRoomTarget,
   leaveRoom,
@@ -183,7 +184,8 @@ const state = {
   boardDvrOpen: false,
   boardDvrPlaying: false,
   boardDvrTimer: 0 as number | 0,
-  boardDvrBoardId: ""
+  boardDvrBoardId: "",
+  racetimeAccount: null as { configured: boolean; linked: boolean; connected: boolean } | null
 };
 
 const formatTime = (value: string | null | undefined) => {
@@ -808,10 +810,17 @@ async function loadAvailableRooms() {
   state.syncMessage = "Loading available rooms...";
   render();
   try {
-    const rooms = await fetchRooms({
+    const config = {
       baseUrl: state.baseUrl,
       sessionToken: state.sessionToken
-    });
+    };
+    const [rooms, viewerSettings] = await Promise.all([
+      fetchRooms(config),
+      fetchViewerSettings(config).catch(() => null)
+    ]);
+    if (viewerSettings?.racetime_account) {
+      state.racetimeAccount = viewerSettings.racetime_account;
+    }
     state.rooms = rooms.map((room) => cloneSnapshot(room));
     state.connectionState = "connected";
     state.snapshot = null;
@@ -842,10 +851,17 @@ async function restorePersistedDesktopSession() {
     : "Restoring desktop session...";
   render();
   try {
-    const rooms = await fetchRooms({
+    const config = {
       baseUrl: state.baseUrl,
       sessionToken: state.sessionToken
-    });
+    };
+    const [rooms, viewerSettings] = await Promise.all([
+      fetchRooms(config),
+      fetchViewerSettings(config).catch(() => null)
+    ]);
+    if (viewerSettings?.racetime_account) {
+      state.racetimeAccount = viewerSettings.racetime_account;
+    }
     state.rooms = rooms.map((room) => cloneSnapshot(room));
     state.connectionState = "connected";
     state.syncMessage = state.rooms.length
@@ -1157,6 +1173,13 @@ function renderCreateRoomForm() {
 }
 
 function renderUserSettingsPanel() {
+  const racetime = state.racetimeAccount;
+  const racetimeCopy = racetime?.linked
+    ? "Connected. A verified Bingo result can submit your own .done to RaceTime."
+    : racetime?.configured
+      ? "Connect your RaceTime account to enable verified .done reporting."
+      : "RaceTime connection status has not loaded yet. You can still open the connection page.";
+  const racetimeButton = racetime?.linked ? "Manage RaceTime" : "Connect RaceTime";
   return `
     <form id="user-settings-form" class="user-settings-form">
       <label>
@@ -1181,6 +1204,13 @@ function renderUserSettingsPanel() {
           ></span>
         </div>
       </label>
+      <section class="racetime-settings-card">
+        <div>
+          <span class="section-kicker">RaceTime</span>
+          <p class="muted small">${escapeHtml(racetimeCopy)}</p>
+        </div>
+        <button type="button" class="action-button action-button-secondary" id="connect-racetime-button">${racetimeButton}</button>
+      </section>
       <div class="create-room-actions">
         <button type="submit" class="action-button action-button-primary">Save settings</button>
         <button type="button" class="action-button action-button-ghost" id="close-settings-button">Close</button>
@@ -2079,6 +2109,18 @@ function render() {
     state.settingsOpen = false;
     state.userColorDraft = state.userColorHex;
     render();
+  });
+
+  app.querySelector<HTMLButtonElement>("#connect-racetime-button")?.addEventListener("click", () => {
+    void openExternalUrl(`${state.baseUrl}/bingo/settings/racetime/connect`)
+      .then(() => {
+        state.syncMessage = "RaceTime sign-in opened in your browser. Return here and refresh rooms after authorizing.";
+        render();
+      })
+      .catch((error) => {
+        state.syncMessage = error instanceof Error ? error.message : "Failed to open RaceTime sign-in.";
+        render();
+      });
   });
 
   app.querySelector<HTMLFormElement>("#create-room-form")?.addEventListener("submit", (event) => {

@@ -156,6 +156,20 @@ export async function saveViewerSettings(
   return response.json() as Promise<ViewerSettingsResponse>;
 }
 
+export async function fetchViewerSettings(
+  config: Omit<ConnectionConfig, "roomCode">
+): Promise<ViewerSettingsResponse> {
+  const response = await fetch(`${config.baseUrl}/api/bingo/viewer/settings`, {
+    headers: {
+      Authorization: `Bearer ${config.sessionToken}`
+    }
+  });
+  if (!response.ok) {
+    throw new Error(`Viewer settings request failed with HTTP ${response.status}`);
+  }
+  return response.json() as Promise<ViewerSettingsResponse>;
+}
+
 export async function sendBoardAction(
   config: ConnectionConfig,
   squareId: string,

@@ -249,4 +249,11 @@ export type ViewerSettingsResponse = {
     user_color_hex: string;
     updated_at_utc?: string;
   };
+  racetime_account?: {
+    configured: boolean;
+    linked: boolean;
+    connected: boolean;
+    linked_at_utc?: string;
+    expires_at_utc?: string;
+  };
 };

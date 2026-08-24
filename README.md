@@ -47,6 +47,54 @@ Prime Bingo currently supports:
 - **Metroid Prime 2: Echoes Randomizer**
 - **Metroid Prime 1 & 2 Crossgame Randomizer**
 
+## Board generation algorithms
+
+When you create a room, the **Algorithm** setting controls how goals and difficulty are arranged on the board. It does **not** change the Randovania seed or game logic. It only changes how Prime Bingo builds the Bingo board from the available goal pool.
+
+Prime Bingo currently offers three generation styles:
+
+### Random
+
+**Random** is the least structured option.
+
+Goals are selected and placed without trying to create a deliberate difficulty pattern across the board. Normal duplicate prevention and the goal list's tag restrictions still apply, but there is no attempt to make every row, column, or route follow a particular difficulty curve.
+
+Use Random when you want the board to be unpredictable and are less concerned about how evenly the difficulty is distributed.
+
+### SRLv5
+
+**SRLv5** is based on the long-running SpeedRunsLive/BingoSync v5 style of Bingo generation.
+
+Instead of treating every square as interchangeable, SRLv5 spreads difficulty buckets around the board and then selects a goal appropriate for the difficulty assigned to each position. On a traditional 5x5 board, the original SRLv5 model uses the full 1-25 difficulty range across the 25 squares.
+
+It also considers goal relationships while filling the board. Prime Bingo's **line tags** are used to discourage or prevent closely related goals from ending up together where the configured line restriction says they should not. The result is generally a more deliberately balanced board than Random while still leaving plenty of variation between generations.
+
+For larger formats such as Central Dynamo, Prime Bingo adapts the same difficulty-distribution approach to the selected board size rather than pretending a 9x9 board somehow still contains only 25 squares. The fixed `Start` cells are handled separately from generated goals.
+
+Use SRLv5 when you want difficulty spread across the board with the normal goal-tag balancing doing most of the cleanup work.
+
+### Isaac's
+
+**Isaac's** is based on the classic Binding of Isaac Bingo generator style.
+
+Rather than using 25 individual difficulty buckets like SRLv5, Isaac's groups goals into broader difficulty bands and places those bands according to a more structured difficulty layout. A goal is then chosen from the pool appropriate for that position.
+
+This tends to produce a board with a more obvious mixture of easier, middle, and harder goals instead of the finer 1-25 distribution used by SRLv5.
+
+Prime Bingo still applies its own goal restrictions when choosing the actual goals, including the board and line tag rules defined in the goal lists. In other words, choosing Isaac's changes the difficulty layout; it does not turn off the protections against bad or repetitive goal combinations.
+
+Use Isaac's when you want a structured difficulty pattern but prefer broader difficulty bands over SRLv5's more granular spread.
+
+### Tags and constraints apply to all algorithms
+
+The algorithm decides **where difficulty goes** and how candidate goals are chosen. The goal-list tags handle **which combinations are allowed or discouraged**.
+
+- **Line tags** are used for relationships that should be restricted within the same Bingo line or equivalent generated relationship.
+- **Board tags** are used to spread categories across the board and keep too many similar goals from clustering together.
+- Goals are not duplicated on the same board where the generator rules prohibit duplication.
+
+So changing the algorithm should change the shape and feel of the board, not bypass the balancing rules attached to the goals themselves.
+
 ## Board controls
 
 The board controls are intentionally simple:

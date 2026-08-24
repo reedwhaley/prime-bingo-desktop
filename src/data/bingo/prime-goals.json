@@ -681,10 +681,10 @@
       "name": "Use 1 Missile Station",
       "difficulty": 12,
       "tags": {
-        "line": [],
-        "board": [
+        "line": [
           "missile-station"
-        ]
+        ],
+        "board": []
       }
     },
     {
@@ -1640,7 +1640,6 @@
     "board": {
       "chozoitem": 18,
       "magmooritem": 18,
-      "majorboss": 18,
       "minesitem": 18,
       "phenitem": 18,
       "progression": 18,

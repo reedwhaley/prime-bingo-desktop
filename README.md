@@ -146,7 +146,7 @@ Numeric counters can only be changed where that specific player's current route 
 
 ### Finishing
 
-`Done` is only available when the server can validate a current completed and owned start-to-end Central Dynamo path. Previously corrected tiles do not independently block `Done`.
+`Done` is only available when the server can validate a current completed and owned start-to-end Central Dynamo path. Completing that path does not finish the race automatically; the player must still select `Done` after their required in-game finish, such as a final boss.
 
 ## Fog of war
 
@@ -176,7 +176,7 @@ When the production RaceTime OAuth service is available:
 4. Refresh the room list.
 5. The RaceTime card will show **Connected** and the button becomes **Manage RaceTime**.
 
-For supported tournament rooms, a verified Bingo completion can submit that player's own `.done` to the associated RaceTime room automatically.
+For supported tournament rooms, the player's manual `Done` action can submit that player's own `.done` to the associated RaceTime room. Board progress and line completion never submit `.done` automatically.
 
 RaceTime OAuth credentials are handled server-side and are not exposed through room snapshots, chat, or board activity data.
 
@@ -240,7 +240,7 @@ Counters are restricted by your current valid path. Make sure the goal is adjace
 
 ### `Done` is unavailable
 
-For Central Dynamo, the server must be able to validate a full start-to-end route made from currently completed tiles owned by your team.
+For Classic Bingo, score a line first. For Central Dynamo, the server must validate a full start-to-end route made from currently completed tiles owned by your team. In either format, `Done` remains a manual action after the required in-game finish.
 
 ### RaceTime still shows disconnected
 

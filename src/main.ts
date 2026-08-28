@@ -32,11 +32,13 @@ import type {
   LiveEvent,
   PlayerSlot,
   RoomFeedEntry,
-  RoomSnapshot
+  RoomSnapshot,
+  ViewerSettingsResponse
 } from "./types";
 
 type ConnectionState = "idle" | "mock" | "connecting" | "connected" | "offline" | "error";
 type SnapshotEvent = { type: "room.snapshot"; version: number; payload: RoomSnapshot };
+type RaceTimeAccount = NonNullable<ViewerSettingsResponse["racetime_account"]>;
 
 const PRODUCTION_BASE_URL = "https://mprandomizer.com";
 const deviceName = "Prime Bingo Desktop";
@@ -185,7 +187,7 @@ const state = {
   boardDvrPlaying: false,
   boardDvrTimer: 0 as number | 0,
   boardDvrBoardId: "",
-  racetimeAccount: null as { configured: boolean; linked: boolean; connected: boolean } | null
+  racetimeAccount: null as RaceTimeAccount | null
 };
 
 const formatTime = (value: string | null | undefined) => {
@@ -511,6 +513,21 @@ function updateSquareByEvent(event: LiveEvent) {
   if (!snapshot) {
     return;
   }
+  const eventBoardId = String(event.payload.board_id ?? "");
+  if (eventBoardId && eventBoardId !== snapshot.viewer_board_id) {
+    return;
+  }
+  if (event.type === "square.revealed" || event.type === "square.hidden") {
+    const visibilitySquareId = String(
+      event.type === "square.revealed" ? event.payload.revealed_square_id ?? "" : event.payload.hidden_square_id ?? ""
+    );
+    const visibilitySquare = snapshot.board.find((item) => item.square_id === visibilitySquareId);
+    if (visibilitySquare) {
+      visibilitySquare.revealed = event.type === "square.revealed";
+      visibilitySquare.hidden = event.type === "square.hidden";
+    }
+    return;
+  }
   const squareId = String(event.payload.square_id ?? "");
   const playerSlot = String(event.payload.player_slot ?? "") as PlayerSlot;
   const square = snapshot.board.find((item) => item.square_id === squareId);
@@ -519,6 +536,18 @@ function updateSquareByEvent(event: LiveEvent) {
   }
   if (event.type === "square.completed") {
     square[`${playerSlot}_completed_at_utc`] = String(event.payload.completed_at_utc ?? "");
+  } else if (event.type === "square.marked") {
+    const otherSlot: PlayerSlot = playerSlot === "p1" ? "p2" : "p1";
+    square.claimed_by_slot = playerSlot;
+    square[`${playerSlot}_completed_at_utc`] = String(event.payload.completed_at_utc ?? event.occurred_at_utc ?? "");
+    square[`${otherSlot}_completed_at_utc`] = null;
+  } else if (event.type === "square.unmarked" || event.type === "staff.square.claim_cleared") {
+    square.claimed_by_slot = null;
+    square.p1_completed_at_utc = null;
+    square.p2_completed_at_utc = null;
+    if (typeof event.payload.counter_value === "number") {
+      square[`${playerSlot}_counter_value`] = event.payload.counter_value;
+    }
   } else if (event.type === "square.cleared") {
     square[`${playerSlot}_completed_at_utc`] = null;
   } else if (event.type === "square.starred") {
@@ -636,7 +665,7 @@ function applyLiveEvent(event: LiveEvent | SnapshotEvent) {
   render();
 }
 
-async function refreshCurrentRoomSnapshot(message: string) {
+async function refreshCurrentRoomSnapshot(message: string, force = false) {
   if (!state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
     return;
   }
@@ -646,7 +675,7 @@ async function refreshCurrentRoomSnapshot(message: string) {
     sessionToken: state.sessionToken
   });
   const currentVersion = state.snapshot?.room.version ?? -1;
-  if (snapshot.room.version === currentVersion) {
+  if (!force && snapshot.room.version === currentVersion) {
     return;
   }
   applySnapshot(snapshot, message);
@@ -663,9 +692,10 @@ async function handleLiveEvent(event: LiveEvent | SnapshotEvent) {
   if (isSnapshotEvent(event) || !state.sessionToken.trim() || !state.roomCode.trim() || isMockMode()) {
     return;
   }
-  if (event.type.startsWith("room.")) {
+  const centralSquareEvent = currentVariant() === "central_dynamo" && event.type.startsWith("square.");
+  if (event.type.startsWith("room.") || centralSquareEvent) {
     try {
-      await refreshCurrentRoomSnapshot(`Live room state synced at version ${event.version}.`);
+      await refreshCurrentRoomSnapshot(`Live room state synced at version ${event.version}.`, centralSquareEvent);
     } catch (error) {
       state.syncMessage = error instanceof Error ? error.message : "Failed to refresh room state.";
       render();
@@ -1174,8 +1204,9 @@ function renderCreateRoomForm() {
 
 function renderUserSettingsPanel() {
   const racetime = state.racetimeAccount;
+  const racetimeIdentity = racetime?.racetime_display_name || racetime?.racetime_username;
   const racetimeCopy = racetime?.linked
-    ? "Connected. A verified Bingo result can submit your own .done to RaceTime."
+    ? `Connected${racetimeIdentity ? ` as ${racetimeIdentity}` : ""}. A verified Bingo result can submit your own .done to RaceTime.`
     : racetime?.configured
       ? "Connect your RaceTime account to enable verified .done reporting."
       : "RaceTime connection status has not loaded yet. You can still open the connection page.";
@@ -1436,12 +1467,12 @@ function renderBoardStage() {
           <button type="button" class="action-button action-button-ghost board-back-button" id="back-to-browser-button">Back</button>
           <div class="board-score">
             <article>
-              <span>${central ? "P1 Claims" : (fillMode === "team" ? "P1" : "Board")}</span>
+              <span>${central ? "P1 Marked" : (fillMode === "team" ? "P1" : "Board")}</span>
               <strong>${central ? snapshot.connection_status?.claimed_by_slot?.p1 ?? 0 : snapshot.score.p1_points}</strong>
             </article>
             ${fillMode === "team" ? `
             <article>
-              <span>${central ? "P2 Claims" : "P2"}</span>
+              <span>${central ? "P2 Marked" : "P2"}</span>
               <strong>${central ? snapshot.connection_status?.claimed_by_slot?.p2 ?? 0 : snapshot.score.p2_points}</strong>
             </article>
             ` : ""}
@@ -1626,8 +1657,8 @@ function renderScoredLines() {
           <span class="room-meta">${connection?.connected ? "Connected" : "Searching"}</span>
         </div>
         <p class="empty-copy">Revealed: ${connection?.revealed_count ?? 0}</p>
-        <p class="empty-copy">P1 claims: ${connection?.claimed_by_slot?.p1 ?? 0}</p>
-        <p class="empty-copy">P2 claims: ${connection?.claimed_by_slot?.p2 ?? 0}</p>
+        <p class="empty-copy">P1 marked: ${connection?.claimed_by_slot?.p1 ?? 0}</p>
+        <p class="empty-copy">P2 marked: ${connection?.claimed_by_slot?.p2 ?? 0}</p>
       </section>
     `;
   }
@@ -1664,11 +1695,12 @@ function renderControls() {
   if (!hasLoadedRoom()) {
     return "";
   }
+  const central = currentSnapshot()?.room.variant === "central_dynamo";
   return `
     <section class="tool-card">
       <span class="section-kicker">Controls</span>
       <div class="control-list">
-        <span><strong>Left click</strong> toggle completion</span>
+        <span><strong>Left click</strong> ${central ? "mark complete or unmark as a correction" : "toggle completion"}</span>
         <span><strong>Right click</strong> toggle star</span>
         <span><strong>Mouse wheel up</strong> increment a numeric goal</span>
         <span><strong>Mouse wheel down</strong> decrement a numeric goal</span>
@@ -2112,9 +2144,12 @@ function render() {
   });
 
   app.querySelector<HTMLButtonElement>("#connect-racetime-button")?.addEventListener("click", () => {
-    void openExternalUrl(`${state.baseUrl}/bingo/settings/racetime/connect`)
+    const racetimePath = state.racetimeAccount?.linked ? "/bingo" : "/bingo/settings/racetime/connect";
+    void openExternalUrl(`${state.baseUrl}${racetimePath}`)
       .then(() => {
-        state.syncMessage = "RaceTime sign-in opened in your browser. Return here and refresh rooms after authorizing.";
+        state.syncMessage = state.racetimeAccount?.linked
+          ? "RaceTime account management opened in your browser."
+          : "RaceTime sign-in opened in your browser. Return here and refresh rooms after authorizing.";
         render();
       })
       .catch((error) => {

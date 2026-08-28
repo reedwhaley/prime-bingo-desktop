@@ -131,29 +131,22 @@ Each player builds their own route across the shared board from their assigned s
 - Each player's route is tracked separately, even though Central Dynamo is a team game.
 - The server validates the route before accepting `Done`.
 
-### Claims and completion are separate
+### Marking and ownership
 
-A Central Dynamo tile can be **claimed** without currently being **complete**.
+Complete a goal, then mark it. Marking a Central Dynamo tile makes it complete, assigns it to you, and lets it contribute to your route.
 
-- **Claims are permanent for players.** Once you commit to a tile, you cannot unclaim it just because you do not like what comes next.
-- Completing a claimed tile causes it to fill and contribute to your valid route.
-- If you later lose that progress, mark the tile incomplete. The claim stays in place, but the route through that tile is broken.
-- Recomplete the goal and the connection becomes valid again.
-- If a numeric counter drops below its target, the tile becomes incomplete without removing the claim.
-
-This is intentional. Central Dynamo is built around committing to a route rather than revealing a goal, changing your mind, and backing out.
+- Once a goal has been legitimately completed and marked, it stays complete for Bingo purposes even if you later die, reset, reload, or lose the item in your current save.
+- Left click your own completed tile only when correcting a misclick or a goal that should not have been marked.
+- A correction clears both completion and ownership. Fog is recalculated from the remaining connected marked route, so cells exposed only by that tile return to fog while overlapping reveals remain visible.
+- An eligible player may later complete and own the corrected tile under the normal adjacency rules.
 
 ### Counters in Central Dynamo
 
-Numeric counters can only be changed where that specific player's current route allows progress.
-
-If an incomplete claimed tile breaks your route, you cannot continue extending through that broken section until the goal is completed again.
+Numeric counters can only be changed where that specific player's current route allows progress. Reaching the target completes and assigns the tile. Manually decreasing a completed counter below its target is a correction, so completion and ownership are cleared and fog is recalculated from the remaining connected route.
 
 ### Finishing
 
-`Done` is only available when the server can validate a complete start-to-end Central Dynamo path with all required claimed tiles currently complete.
-
-If `Done` is unavailable when you think you are finished, check your route for an incomplete claimed tile or a broken connection.
+`Done` is only available when the server can validate a current completed and owned start-to-end Central Dynamo path. Previously corrected tiles do not independently block `Done`.
 
 ## Fog of war
 
@@ -167,7 +160,7 @@ If you think fog of war has leaked information, please report it. Those are exac
 
 **Stars** are personal markers and can be toggled with right click.
 
-Goals with numeric progress display a counter directly on the tile. Use the mouse wheel to increase or decrease the counter. Reaching the goal's target can complete the goal automatically, and dropping back below the target can make it incomplete again where the room rules require it.
+Goals with numeric progress display a counter directly on the tile. Use the mouse wheel to increase or decrease the counter. Reaching the goal's target completes it; manually dropping a Central Dynamo counter below the target corrects the mark and clears ownership.
 
 ## RaceTime account linking
 
@@ -211,7 +204,7 @@ The DVR can reconstruct historical board state without modifying the live room, 
 
 - goal text
 - tile fills
-- claims
+- marks and ownership changes
 - stars
 - counters
 - difficulty colors
@@ -233,21 +226,21 @@ Make sure you completed the authorization in the browser window that Prime Bingo
 
 Click **Refresh rooms**. The Room Browser only shows rooms your signed-in account is allowed to see.
 
-### I cannot unclaim a Central Dynamo tile
+### I need to correct a Central Dynamo tile
 
-That is intentional. Player claims in Central Dynamo are permanent. Staff can make corrections when necessary.
+Left click your own completed tile. It becomes incomplete and unowned; cells exposed only through that route return to fog, while cells revealed by another valid route stay visible.
 
 ### My Central Dynamo route stopped working
 
-Check for a claimed tile that is currently incomplete. An incomplete claimed tile breaks the active connection through that section until the goal is completed again.
+A corrected tile no longer contributes to your route. Mark it again after legitimately completing it, or build another valid connection.
 
 ### I cannot increment a Central Dynamo counter
 
-Counters are restricted by your current valid path. Make sure the goal is adjacent to a valid section of your own route and that an earlier incomplete tile is not blocking the connection.
+Counters are restricted by your current valid path. Make sure the goal is adjacent to a completed section that you own.
 
 ### `Done` is unavailable
 
-For Central Dynamo, the server must be able to validate a full start-to-end route and every required claimed tile on that route must currently be complete.
+For Central Dynamo, the server must be able to validate a full start-to-end route made from currently completed tiles owned by your team.
 
 ### RaceTime still shows disconnected
 

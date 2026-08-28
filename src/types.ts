@@ -255,5 +255,8 @@ export type ViewerSettingsResponse = {
     connected: boolean;
     linked_at_utc?: string;
     expires_at_utc?: string;
+    racetime_user_id?: string;
+    racetime_username?: string;
+    racetime_display_name?: string;
   };
 };

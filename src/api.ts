@@ -232,6 +232,10 @@ export function rerollRoom(config: ConnectionConfig) {
   return postRoomAction(config, "reroll");
 }
 
+export function regenerateRoomInvite(config: ConnectionConfig) {
+  return postRoomAction(config, "invite");
+}
+
 export function reportRoomResult(config: ConnectionConfig, result: "done" | "forfeit") {
   return postRoomAction(config, "result", { result });
 }

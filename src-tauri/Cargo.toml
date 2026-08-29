@@ -1,6 +1,6 @@
 [package]
 name = "prime-bingo-desktop"
-version = "0.5.0"
+version = "0.5.1"
 description = "Prime Bingo desktop client"
 authors = ["Reed Whaley"]
 edition = "2021"

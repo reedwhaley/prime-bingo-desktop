@@ -168,6 +168,8 @@ export type RoomSnapshot = {
   room_feed: RoomFeedEntry[];
   activity_feed: ActivityEntry[];
   chat_messages: ChatMessage[];
+  // Returned only to the room manager for private practice rooms.
+  invite_url?: string;
   permissions: {
     can_manage_room: boolean;
     can_view_board_dvr?: boolean;

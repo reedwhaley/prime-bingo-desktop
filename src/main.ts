@@ -13,6 +13,7 @@ import {
   joinRoomTarget,
   leaveRoom,
   reportRoomResult,
+  regenerateRoomInvite,
   rerollRoom,
   saveViewerSettings,
   sendBoardAction,
@@ -1789,6 +1790,38 @@ function renderRoomFeed() {
   `;
 }
 
+function renderRoomInvite() {
+  const snapshot = currentSnapshot();
+  if (
+    !snapshot ||
+    isMockMode() ||
+    !snapshot.permissions.can_manage_room ||
+    snapshot.room.room_type !== "practice" ||
+    snapshot.room.visibility !== "private"
+  ) {
+    return "";
+  }
+
+  const inviteUrl = snapshot.invite_url ?? "";
+  return `
+    <section class="tool-card room-invite-panel">
+      <div class="panel-heading-inline">
+        <span class="section-kicker">Private Room Invite</span>
+      </div>
+      <p class="muted small">Share this link to let another player open and join this private practice room.</p>
+      <div class="room-invite-actions">
+        ${
+          inviteUrl
+            ? `<input id="room-invite-url" type="text" value="${escapeHtml(inviteUrl)}" readonly aria-label="Private room invite link" />
+               <button type="button" class="action-button action-button-primary" data-copy-room-invite>Copy</button>`
+            : ""
+        }
+        <button type="button" class="action-button action-button-secondary" data-room-action="regenerate-invite">${inviteUrl ? "Regenerate" : "Create invite link"}</button>
+      </div>
+    </section>
+  `;
+}
+
 function formatReplayElapsed(seconds: number | undefined) {
   if (!Number.isFinite(Number(seconds))) {
     return "Pre-race";
@@ -2005,6 +2038,7 @@ function renderRoomView() {
           ${renderRoomActions()}
           ${renderParticipants()}
           ${renderRoomFeed()}
+          ${renderRoomInvite()}
           ${renderBoardDvr()}
           ${renderScoredLines()}
         </aside>
@@ -2264,6 +2298,14 @@ function render() {
         return;
       }
 
+      if (action === "regenerate-invite") {
+        void submitRoomMutation(
+          () => regenerateRoomInvite({ baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken }),
+          "Private room invite link regenerated."
+        );
+        return;
+      }
+
       if (action === "join") {
         void submitRoomMutation(
           () =>
@@ -2383,6 +2425,24 @@ function render() {
         );
       }
     });
+  });
+
+  app.querySelector<HTMLButtonElement>("[data-copy-room-invite]")?.addEventListener("click", async () => {
+    const inviteInput = app.querySelector<HTMLInputElement>("#room-invite-url");
+    const inviteUrl = inviteInput?.value.trim();
+    if (!inviteInput || !inviteUrl) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+    } catch {
+      inviteInput.focus();
+      inviteInput.select();
+      document.execCommand("copy");
+    }
+    state.syncMessage = "Private room invite link copied.";
+    render();
   });
 
   app.querySelector<HTMLButtonElement>("#refresh-rooms-button")?.addEventListener("click", () => {

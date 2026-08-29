@@ -287,7 +287,8 @@ button {
 .create-room-form input,
 .create-room-form select,
 .user-settings-form input,
-.chat-form input {
+.chat-form input,
+.room-invite-actions input {
   width: 100%;
   min-width: 0;
   padding: 12px 14px;
@@ -948,6 +949,17 @@ button {
   align-items: center;
 }
 
+.room-invite-panel .small {
+  margin: 10px 0;
+}
+
+.room-invite-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+}
+
 @media (max-width: 1520px) {
   .desktop-layout.is-room-mode {
     grid-template-columns: minmax(0, 2fr) minmax(320px, 0.8fr);
@@ -985,6 +997,7 @@ button {
 
   .create-room-form,
   .chat-form,
+  .room-invite-actions,
   .board-score {
     grid-template-columns: 1fr;
   }

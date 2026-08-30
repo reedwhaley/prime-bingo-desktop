@@ -162,6 +162,7 @@ const state = {
   authViewerName: persistedDesktopSession?.authViewerName ?? "",
   authPollHandle: 0 as number | 0,
   visualTimerHandle: 0 as number | 0,
+  countdownRevealRefreshPending: false,
   roomPollHandle: 0 as number | 0,
   socket: null as WebSocket | null,
   liveSocketConnected: false,
@@ -2082,7 +2083,19 @@ function bindVisualTimers() {
         const target = new Date(targetValue);
         const remainingMs = target.getTime() - Date.now();
         if (remainingMs <= 0) {
-          countdownLabel.textContent = "0:00 until reveal";
+          // The server owns the reveal transition. Refresh immediately rather
+          // than leaving a completed countdown banner on screen.
+          clearVisualTimer();
+          if (!state.countdownRevealRefreshPending) {
+            state.countdownRevealRefreshPending = true;
+            void refreshCurrentRoomSnapshot("Board revealed.", true)
+              .catch(() => {
+                countdownLabel.textContent = "Waiting for board update...";
+              })
+              .finally(() => {
+                state.countdownRevealRefreshPending = false;
+              });
+          }
         } else {
           const totalSeconds = Math.floor(remainingMs / 1000);
           const minutes = Math.floor(totalSeconds / 60);

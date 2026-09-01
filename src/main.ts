@@ -1345,6 +1345,7 @@ function renderBoardSquare(
   }
 ) {
   const { central, fillMode, p1Fill, p2Fill, p1Star, p2Star } = options;
+  const viewerCompletedAt = snapshot.viewer_slot === "p2" ? square.p2_completed_at_utc : square.p1_completed_at_utc;
   const viewerCounterValue = snapshot.viewer_slot === "p2" ? square.p2_counter_value : square.p1_counter_value;
   const counterLabel = square.counter
     ? `<span class="square-counter">${Math.max(0, Number(viewerCounterValue ?? square.counter_value ?? 0))}/${square.counter.target}</span>`
@@ -1366,6 +1367,8 @@ function renderBoardSquare(
     <button
       class="board-square ${square.hidden ? "board-square-hidden" : "board-square-revealed"}"
       data-square-id="${escapeHtml(square.square_id)}"
+      data-start-square="${square.is_start ? "true" : "false"}"
+      data-start-square-completed="${viewerCompletedAt ? "true" : "false"}"
       type="button"
       ${snapshot.permissions.can_act_on_board && !isMockMode() ? "" : "disabled"}
       ${square.difficulty_color && !square.hidden ? `style="--difficulty:${square.difficulty_color};"` : ""}
@@ -2137,6 +2140,11 @@ function render() {
     button.addEventListener("click", (event) => {
       const squareId = button.dataset.squareId;
       if (!squareId || state.pendingSquareIds.has(squareId)) {
+        return;
+      }
+      if (button.dataset.startSquare === "true" && button.dataset.startSquareCompleted === "true") {
+        state.syncMessage = "Starting locations cannot be unmarked.";
+        render();
         return;
       }
       void submitSquareAction(squareId, "goal.toggle");

@@ -1496,6 +1496,9 @@ function renderBoardStage() {
   const p2Fill = p2 ? participantCompletionColor(p2) : "#3bec94";
   const p1Star = p1 ? participantStarColor(p1) : "#ffd166";
   const p2Star = p2 ? participantStarColor(p2) : "#7fdbff";
+  const finalRevealBoards = snapshot.room.state === "finished"
+    ? (snapshot.revealed_boards || []).filter((board) => board.board_id !== snapshot.viewer_board_id)
+    : [];
   return `
     <section class="stage-card board-stage${stageClass}">
       <div class="board-head">
@@ -1529,6 +1532,23 @@ function renderBoardStage() {
         p1Star,
         p2Star
       })}
+      ${finalRevealBoards.length ? `
+        <section class="finished-board-reveal">
+          <span class="section-kicker">Final Board Reveal</span>
+          <h3>All team boards are now visible</h3>
+          ${finalRevealBoards.map((board) => `
+            <article class="finished-board-panel">
+              <h4>${escapeHtml(board.team_name)}</h4>
+              ${renderActiveBoardMatrix({
+                ...snapshot,
+                board_visible: true,
+                board: board.board,
+                permissions: { ...snapshot.permissions, can_act_on_board: false }
+              }, boardSize, { central, fillMode, p1Fill, p2Fill, p1Star, p2Star })}
+            </article>
+          `).join("")}
+        </section>
+      ` : ""}
     </section>
   `;
 }

@@ -391,6 +391,24 @@ button {
   overflow: hidden;
 }
 
+.finished-board-reveal {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.finished-board-reveal h3,
+.finished-board-panel h4 {
+  margin: 0;
+}
+
+.finished-board-panel {
+  display: grid;
+  gap: 10px;
+}
+
 .board-stage-central-dynamo {
   padding: 16px;
 }

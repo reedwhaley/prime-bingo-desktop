@@ -138,6 +138,12 @@ export type RoomSnapshot = {
   entrants?: Entrant[];
   board_visible: boolean;
   board: BoardSquare[];
+  revealed_boards?: {
+    board_id: string;
+    team_name: string;
+    board: BoardSquare[];
+    participants: Participant[];
+  }[];
   base_board?: BoardSquare[];
   join_targets?: {
     board_id: string;

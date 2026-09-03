@@ -220,6 +220,17 @@ const formatPracticeModeLabel = (value: string | null | undefined) => {
   return normalized === "team" ? "Team" : "Singles";
 };
 
+const formatSessionModeLabel = (value: string | null | undefined) => {
+  switch (String(value || "race").toLowerCase()) {
+    case "coop":
+      return "Co-op";
+    case "casual_teams":
+      return "Casual Teams";
+    default:
+      return "Race";
+  }
+};
+
 const formatLocalDateTime = (value: string | null | undefined) => {
   if (!value) {
     return "";
@@ -1329,7 +1340,7 @@ function renderRoomBrowser() {
                       <span class="room-state-pill">${escapeHtml(room.room.state.toUpperCase())}</span>
                     </div>
                     <p>${escapeHtml(participantSummary)}</p>
-                    <span class="room-meta">${escapeHtml(room.room.room_type)} · ${escapeHtml(formatPracticeModeLabel(room.room.practice_mode))} · ${escapeHtml(room.room.visibility)} · v${room.room.version}</span>
+                    <span class="room-meta">${escapeHtml(room.room.room_type)} · ${escapeHtml(formatPracticeModeLabel(room.room.practice_mode))} · ${escapeHtml(formatSessionModeLabel(room.room.session_mode))} · ${escapeHtml(room.room.visibility)} · v${room.room.version}</span>
                   </button>
                 `;
               })
@@ -1491,7 +1502,7 @@ function renderBoardStage() {
         <div>
           <span class="section-kicker">Active Room</span>
           <h2>${escapeHtml(snapshot.room.room_code)}</h2>
-          <p>${escapeHtml(snapshot.room.room_type)} · ${escapeHtml(formatPracticeModeLabel(snapshot.room.practice_mode))} · ${escapeHtml(snapshot.room.game_type.toUpperCase())} · ${escapeHtml(snapshot.room.generation_algorithm.toUpperCase())}</p>
+          <p>${escapeHtml(snapshot.room.room_type)} · ${escapeHtml(formatPracticeModeLabel(snapshot.room.practice_mode))} · ${escapeHtml(formatSessionModeLabel(snapshot.room.session_mode))} · ${escapeHtml(snapshot.room.game_type.toUpperCase())} · ${escapeHtml(snapshot.room.generation_algorithm.toUpperCase())}</p>
           <p>${escapeHtml(central ? "Central Dynamo" : "Classic Bingo")} · ${escapeHtml(snapshot.room.board_format)}</p>
         </div>
         <div class="board-head-actions">
@@ -2250,6 +2261,7 @@ function render() {
 
   const createVariantSelect = app.querySelector<HTMLSelectElement>("[data-create-variant]");
   const createPracticeMode = app.querySelector<HTMLSelectElement>("[data-create-practice-mode]");
+  const createSessionMode = app.querySelector<HTMLSelectElement>("[data-create-session-mode]");
   const createBoardSize = app.querySelector<HTMLSelectElement>("[data-create-board-size]");
   const createHelper = app.querySelector<HTMLElement>("[data-central-helper]");
   const syncCreateVariantUi = () => {
@@ -2258,6 +2270,12 @@ function render() {
       createPracticeMode.closest("label")?.toggleAttribute("hidden", Boolean(isCentral));
       if (isCentral) {
         createPracticeMode.value = "team";
+      }
+    }
+    if (createSessionMode) {
+      createSessionMode.closest("label")?.toggleAttribute("hidden", Boolean(isCentral));
+      if (isCentral) {
+        createSessionMode.value = "race";
       }
     }
     if (createBoardSize instanceof HTMLSelectElement) {

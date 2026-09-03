@@ -101,6 +101,7 @@ export type RoomSnapshot = {
     variant?: BingoVariant;
     board_size?: number;
     practice_mode?: string;
+    session_mode?: "race" | "coop" | "casual_teams";
     state: RoomState;
     visibility: string;
     game_type: string;
@@ -249,6 +250,7 @@ export type ViewerSettingsResponse = {
   settings: {
     discord_user_id: string;
     user_color_hex: string;
+    done_keybind?: string;
     updated_at_utc?: string;
   };
   racetime_account?: {

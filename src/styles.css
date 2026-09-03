@@ -687,7 +687,7 @@ button {
 
 .square-star-p1 {
   left: 8px;
-  top: 6px;
+  bottom: 10px;
 }
 
 .square-star-p2 {
@@ -696,8 +696,7 @@ button {
 }
 
 .square-star-p1 ~ .square-text {
-  padding-left: 14px;
-  padding-top: 2px;
+  padding-left: 16px;
 }
 
 .square-counter {

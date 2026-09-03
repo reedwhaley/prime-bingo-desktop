@@ -89,6 +89,7 @@ export async function createRoom(
     variant?: string;
     board_size?: number;
     practice_mode: string;
+    session_mode?: "race" | "coop" | "casual_teams";
     game_type: string;
     algorithm: string;
     visibility: string;
@@ -143,7 +144,7 @@ export async function fetchDesktopAuthRequest(baseUrl: string, requestId: string
 
 export async function saveViewerSettings(
   config: Omit<ConnectionConfig, "roomCode">,
-  payload: { user_color_hex: string }
+  payload: { user_color_hex: string; done_keybind?: string }
 ): Promise<ViewerSettingsResponse> {
   const response = await fetch(`${config.baseUrl}/api/bingo/viewer/settings`, {
     method: "POST",

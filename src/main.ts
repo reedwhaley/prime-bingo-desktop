@@ -55,6 +55,11 @@ const PRACTICE_MODE_OPTIONS = [
   { value: "singles", label: "Singles" },
   { value: "team", label: "Team" }
 ] as const;
+const SESSION_MODE_OPTIONS = [
+  { value: "race", label: "Race" },
+  { value: "coop", label: "Co-op" },
+  { value: "casual_teams", label: "Casual Teams" }
+] as const;
 const VARIANT_OPTIONS = [
   { value: "classic", label: "Classic Bingo" },
   { value: "central_dynamo", label: "Central Dynamo Bingo" }
@@ -174,6 +179,8 @@ const state = {
   settingsOpen: false,
   userColorHex: loadStoredUserColor(),
   userColorDraft: loadStoredUserColor(),
+  doneKeybind: "Numpad1",
+  doneKeybindDraft: "Numpad1",
   teamNameDraft: "",
   chatDraft: "",
   chatInputFocused: false,
@@ -853,6 +860,10 @@ async function loadAvailableRooms() {
     if (viewerSettings?.racetime_account) {
       state.racetimeAccount = viewerSettings.racetime_account;
     }
+    if (viewerSettings?.settings.done_keybind) {
+      state.doneKeybind = viewerSettings.settings.done_keybind;
+      state.doneKeybindDraft = state.doneKeybind;
+    }
     state.rooms = rooms.map((room) => cloneSnapshot(room));
     state.connectionState = "connected";
     state.snapshot = null;
@@ -893,6 +904,10 @@ async function restorePersistedDesktopSession() {
     ]);
     if (viewerSettings?.racetime_account) {
       state.racetimeAccount = viewerSettings.racetime_account;
+    }
+    if (viewerSettings?.settings.done_keybind) {
+      state.doneKeybind = viewerSettings.settings.done_keybind;
+      state.doneKeybindDraft = state.doneKeybind;
     }
     state.rooms = rooms.map((room) => cloneSnapshot(room));
     state.connectionState = "connected";
@@ -1085,6 +1100,7 @@ async function submitCreateRoom(form: HTMLFormElement) {
         variant: String(formData.get("variant") || "classic"),
         board_size: Number(formData.get("board_size") || "5"),
         practice_mode: String(formData.get("practice_mode") || "singles"),
+        session_mode: String(formData.get("session_mode") || "race") as "race" | "coop" | "casual_teams",
         game_type: String(formData.get("game_type") || "mpr"),
         algorithm: String(formData.get("algorithm") || "random"),
         visibility: String(formData.get("visibility") || "private"),
@@ -1154,6 +1170,12 @@ function renderCreateRoomForm() {
         <span>Practice mode</span>
         <select name="practice_mode" data-create-practice-mode>
           ${PRACTICE_MODE_OPTIONS.map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join("")}
+        </select>
+      </label>
+      <label>
+        <span>Session mode</span>
+        <select name="session_mode" data-create-session-mode>
+          ${SESSION_MODE_OPTIONS.map((option) => `<option value="${option.value}">${escapeHtml(option.label)}</option>`).join("")}
         </select>
       </label>
       <label>
@@ -1236,6 +1258,10 @@ function renderUserSettingsPanel() {
             aria-hidden="true"
           ></span>
         </div>
+      </label>
+      <label>
+        <span>Done key</span>
+        <input id="done-keybind-input" name="done_keybind" value="${escapeHtml(state.doneKeybindDraft)}" maxlength="12" readonly>
       </label>
       <section class="racetime-settings-card">
         <div>
@@ -2265,6 +2291,16 @@ function render() {
     }
   });
 
+  app.querySelector<HTMLInputElement>("#done-keybind-input")?.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.altKey || event.metaKey || ["Shift", "Control", "Alt", "Meta"].includes(event.key)) return;
+    event.preventDefault();
+    state.doneKeybindDraft = event.code;
+    const input = event.currentTarget;
+    if (input instanceof HTMLInputElement) {
+      input.value = event.code;
+    }
+  });
+
   app.querySelector<HTMLFormElement>("#user-settings-form")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -2285,11 +2321,13 @@ function render() {
             baseUrl: state.baseUrl,
             sessionToken: state.sessionToken
           },
-          { user_color_hex: normalized }
+          { user_color_hex: normalized, done_keybind: String(formData.get("done_keybind") || "Numpad1") }
         );
       }
       storeUserColor(normalized);
       state.userColorDraft = normalized;
+      state.doneKeybind = String(formData.get("done_keybind") || "Numpad1");
+      state.doneKeybindDraft = state.doneKeybind;
       state.settingsOpen = false;
       if (state.sessionToken.trim() && state.roomCode.trim() && !isMockMode()) {
         const snapshot = await fetchSnapshot({
@@ -2620,6 +2658,22 @@ function render() {
 
   bindVisualTimers();
 }
+
+document.addEventListener("keydown", (event) => {
+  const target = event.target as HTMLElement | null;
+  if (
+    event.repeat || event.ctrlKey || event.altKey || event.metaKey || event.code !== state.doneKeybind ||
+    target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement || target?.isContentEditable ||
+    !state.snapshot?.permissions.can_report_done || !state.sessionToken.trim() || !state.roomCode.trim()
+  ) {
+    return;
+  }
+  event.preventDefault();
+  void submitRoomMutation(
+    () => reportRoomResult({ baseUrl: state.baseUrl, roomCode: state.roomCode, sessionToken: state.sessionToken }, "done"),
+    "Done reported."
+  );
+});
 
 render();
 if (state.sessionToken.trim() && !isMockMode()) {
